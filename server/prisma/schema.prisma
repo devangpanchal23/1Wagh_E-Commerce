@@ -1,0 +1,167 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  password     String
+  clerkId      String   @default("")
+  role         String   @default("customer")
+  mobileNumber String   @default("")
+  age          Int?
+  gender       String   @default("prefer_not_to_say")
+  birthdate    String   @default("")
+  addresses    Json?    @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  orders       Order[]
+  reviews      Review[]
+  cart         Cart?
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String    @default("")
+  icon        String    @default("Zap")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model Product {
+  id           String      @id @default(uuid())
+  name         String
+  slug         String      @unique
+  description  String
+  price        Float
+  mrp          Float
+  images       Json
+  categoryId   String
+  category     Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  brand        String      @default("WAGH")
+  specs        Json?
+  sections     Json?
+  stock        Int         @default(100)
+  ratingAvg    Float       @default(4.8)
+  ratingCount  Int         @default(24)
+  isFeatured   Boolean     @default(false)
+  isNewArrival Boolean     @default(false)
+  isBestSeller Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  reviews      Review[]
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+
+  @@index([categoryId])
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId         String      @unique
+  items           OrderItem[]
+  shippingAddress Json
+  paymentMethod   String      @default("COD")
+  paymentStatus   String      @default("Pending")
+  orderStatus     String      @default("Processing")
+  subtotal        Float
+  shippingFee     Float       @default(0)
+  discount        Float       @default(0)
+  total           Float
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name      String
+  image     String
+  price     Float
+  qty       Int
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id         String   @id @default(uuid())
+  cartId     String
+  cart       Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  qty        Int      @default(1)
+  priceAtAdd Float
+}
+
+model Review {
+  id               String   @id @default(uuid())
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userName         String
+  rating           Int
+  comment          String
+  verifiedPurchase Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String   @default("")
+  subject   String   @default("General Inquiry")
+  message   String
+  status    String   @default("New")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GoogleDriveConnection {
+  id                    String   @id @default(uuid())
+  adminUserId           String   @unique
+  encryptedRefreshToken String
+  email                 String
+  scope                 String   @default("https://www.googleapis.com/auth/drive.readonly")
+  connectedAt           DateTime @default(now())
+  lastUsedAt            DateTime @default(now())
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}

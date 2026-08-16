@@ -1,0 +1,194 @@
+/* Premium Responsive Auth Modal Styles */
+
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: authFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow-y: auto;
+}
+
+.auth-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 490px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 1.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  overflow: hidden;
+  animation: authModalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  margin: auto;
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes authModalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Override Clerk default card styling inside modal */
+.auth-modal-container .cl-card,
+.auth-modal-container .cl-rootBox,
+.auth-modal-container .cl-main,
+.auth-modal-container .cl-signIn-start,
+.auth-modal-container .cl-signUp-start,
+.auth-modal-container .cl-cardBox {
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Fix Clerk form element sizing & corner visibility */
+.auth-modal-container .cl-form {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  gap: 0.875rem !important;
+}
+
+.auth-modal-container .cl-formFieldRow {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  gap: 0.75rem !important;
+}
+
+.auth-modal-container .cl-formField {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.auth-modal-container .cl-formFieldInput {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+}
+
+.auth-modal-container .cl-socialButtons {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  gap: 0.5rem !important;
+}
+
+.auth-modal-container .cl-socialButtonsBlockButton {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.auth-modal-container .cl-pageScrollBox {
+  padding: 0 !important;
+}
+
+.auth-modal-container .cl-footer {
+  background: transparent !important;
+  border: none !important;
+  padding-top: 0.5rem !important;
+  box-sizing: border-box !important;
+}
+
+.auth-modal-container .cl-internal-ph566,
+.auth-modal-container .cl-internal-b3820d {
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+  width: 100% !important;
+}
+
+.auth-modal-container .cl-headerTitle,
+.auth-modal-container .cl-headerSubtitle {
+  display: none !important;
+}
+
+/* Override Clerk social buttons and badge text overflow */
+.auth-modal-container .cl-socialButtons,
+.cl-socialButtons {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.auth-modal-container .cl-socialButtonsBlockButton,
+.cl-socialButtonsBlockButton {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding-right: 0.5rem !important;
+  padding-left: 0.5rem !important;
+}
+
+.auth-modal-container .cl-socialButtonsBlockButtonText,
+.cl-socialButtonsBlockButtonText {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.75rem !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.auth-modal-container .cl-socialButtonsBlockButton__badge,
+.auth-modal-container .cl-badge,
+.cl-badge {
+  font-size: 0.65rem !important;
+  padding: 0.15rem 0.4rem !important;
+  border-radius: 9999px !important;
+  white-space: nowrap !important;
+  flex-shrink: 1 !important;
+  max-width: 70px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Custom floating scrollbar to prevent overlapping input borders */
+.custom-scrollbar {
+  scrollbar-gutter: stable;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+
+

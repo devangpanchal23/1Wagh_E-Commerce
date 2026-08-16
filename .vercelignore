@@ -1,0 +1,10 @@
+node_modules
+.git
+.gemini
+brain
+*.log
+README.md
+client/node_modules
+server/node_modules
+.env
+.env.local
