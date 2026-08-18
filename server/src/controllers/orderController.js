@@ -1,3 +1,4 @@
+const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Coupon = require('../models/Coupon');
@@ -5,6 +6,27 @@ const PaymentReceipt = require('../models/PaymentReceipt');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { generateOrderNumber } = require('../utils/generateOrderNumber');
+
+async function rollbackStock(items) {
+  for (const item of items) {
+    try {
+      if (item.hasVariants && item.sku) {
+        await Product.updateOne(
+          { _id: item.productId },
+          { $inc: { 'variants.$[v].sizes.$[s].stock': item.qty } },
+          { arrayFilters: [{ 'v.sizes.sku': item.sku }, { 's.sku': item.sku }] }
+        );
+      } else {
+        await Product.updateOne(
+          { _id: item.productId },
+          { $inc: { stock: item.qty } }
+        );
+      }
+    } catch (err) {
+      console.error('Stock rollback error:', err);
+    }
+  }
+}
 
 exports.createOrder = async (req, res, next) => {
   try {
@@ -29,11 +51,18 @@ exports.createOrder = async (req, res, next) => {
       const rawImg = item.image || item.product?.images?.[0] || '';
       const imgUrl = typeof rawImg === 'string' ? rawImg : (rawImg?.url || '');
 
+      const productIdStr = item.product?._id ? item.product._id.toString() : (item.product || item.productId || '').toString();
+
       return {
         ...item,
+        product: productIdStr,
         image: imgUrl,
         price: Number(item.price),
         qty: Number(item.qty),
+        sku: item.sku || '',
+        variantId: item.variantId || null,
+        colorName: item.colorName || '',
+        sizeLabel: item.sizeLabel || '',
       };
     });
 
@@ -42,6 +71,64 @@ exports.createOrder = async (req, res, next) => {
         return res.status(400).json({ success: false, message: 'Invalid item price or quantity' });
       }
       calculatedSubtotal += item.price * item.qty;
+    }
+
+    // Perform ATOMIC stock decrement before finalizing order
+    const decrementedItems = [];
+    for (const item of sanitizedItems) {
+      const pDoc = await Product.findById(item.product).lean();
+      if (!pDoc) {
+        await rollbackStock(decrementedItems);
+        return res.status(400).json({ success: false, message: `Product not found for item '${item.name}'` });
+      }
+
+      let updated = null;
+      if (pDoc.hasVariants && item.sku) {
+        updated = await Product.findOneAndUpdate(
+          {
+            _id: item.product,
+            'variants.sizes.sku': item.sku,
+            'variants.sizes.stock': { $gte: item.qty }
+          },
+          {
+            $inc: { 'variants.$[v].sizes.$[s].stock': -item.qty }
+          },
+          {
+            arrayFilters: [
+              { 'v.sizes.sku': item.sku },
+              { 's.sku': item.sku }
+            ],
+            new: true
+          }
+        );
+      } else {
+        updated = await Product.findOneAndUpdate(
+          {
+            _id: item.product,
+            stock: { $gte: item.qty }
+          },
+          {
+            $inc: { stock: -item.qty }
+          },
+          { new: true }
+        );
+      }
+
+      if (!updated) {
+        await rollbackStock(decrementedItems);
+        const label = item.name || (pDoc.name + (item.sizeLabel ? ` (${item.colorName} / ${item.sizeLabel})` : ''));
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for '${label}'. Please update your cart.`
+        });
+      }
+
+      decrementedItems.push({
+        productId: item.product,
+        sku: item.sku,
+        qty: item.qty,
+        hasVariants: pDoc.hasVariants,
+      });
     }
 
     // Coupon re-validation, per-user check, discount calculation, and ATOMIC consumption

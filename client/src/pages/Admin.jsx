@@ -193,6 +193,8 @@ export function Admin() {
     isFeatured: false,
     isNewArrival: false,
     isBestSeller: false,
+    hasVariants: false,
+    variants: [],
     sections: [],
   });
 
@@ -587,6 +589,112 @@ export function Admin() {
     setProductForm((prev) => ({ ...prev, sections }));
   };
 
+  const handleAddVariantColor = () => {
+    setProductForm((prev) => {
+      const curVars = prev.variants || [];
+      const newColorName = curVars.length === 0 ? 'Black' : curVars.length === 1 ? 'White' : `Color ${curVars.length + 1}`;
+      const newHex = curVars.length === 0 ? '#000000' : curVars.length === 1 ? '#FFFFFF' : '#0F4B3F';
+      const basePrice = Number(prev.price) || 499;
+      const baseMrp = Number(prev.mrp) || 999;
+      const baseStock = Number(prev.stock) || 50;
+
+      return {
+        ...prev,
+        hasVariants: true,
+        variants: [
+          ...curVars,
+          {
+            variantId: null,
+            color: { name: newColorName, hex: newHex, swatchImage: '' },
+            images: prev.images.length > 0 ? [...prev.images] : [],
+            sizes: [
+              {
+                sku: `WAGH-${newColorName.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}-1`,
+                label: 'Standard',
+                price: basePrice,
+                mrp: baseMrp,
+                stock: baseStock,
+              },
+            ],
+          },
+        ],
+      };
+    });
+  };
+
+  const handleRemoveVariantColor = (vIdx) => {
+    setProductForm((prev) => {
+      const updated = (prev.variants || []).filter((_, idx) => idx !== vIdx);
+      return {
+        ...prev,
+        variants: updated,
+        hasVariants: updated.length > 0,
+      };
+    });
+  };
+
+  const handleUpdateColorField = (vIdx, field, val) => {
+    setProductForm((prev) => {
+      const updated = [...(prev.variants || [])];
+      updated[vIdx] = {
+        ...updated[vIdx],
+        color: {
+          ...updated[vIdx].color,
+          [field]: val,
+        },
+      };
+      return { ...prev, variants: updated };
+    });
+  };
+
+  const handleAddVariantSize = (vIdx) => {
+    setProductForm((prev) => {
+      const updated = [...(prev.variants || [])];
+      const colorName = updated[vIdx]?.color?.name || 'VAR';
+      const curSizes = updated[vIdx]?.sizes || [];
+      const basePrice = Number(prev.price) || 499;
+      const baseMrp = Number(prev.mrp) || 999;
+      const baseStock = Number(prev.stock) || 50;
+
+      const newSku = `WAGH-${colorName.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}-${curSizes.length + 1}`;
+      updated[vIdx] = {
+        ...updated[vIdx],
+        sizes: [
+          ...curSizes,
+          {
+            sku: newSku,
+            label: curSizes.length === 0 ? 'Standard' : curSizes.length === 1 ? '2M+2M' : `Option ${curSizes.length + 1}`,
+            price: basePrice,
+            mrp: baseMrp,
+            stock: baseStock,
+          },
+        ],
+      };
+      return { ...prev, variants: updated };
+    });
+  };
+
+  const handleRemoveVariantSize = (vIdx, sIdx) => {
+    setProductForm((prev) => {
+      const updated = [...(prev.variants || [])];
+      updated[vIdx].sizes = updated[vIdx].sizes.filter((_, idx) => idx !== sIdx);
+      return { ...prev, variants: updated };
+    });
+  };
+
+  const handleUpdateSizeField = (vIdx, sIdx, field, val) => {
+    setProductForm((prev) => {
+      const updated = [...(prev.variants || [])];
+      const curSizes = [...updated[vIdx].sizes];
+      curSizes[sIdx] = {
+        ...curSizes[sIdx],
+        [field]: field === 'price' || field === 'mrp' || field === 'stock' ? Number(val) : val,
+      };
+      updated[vIdx].sizes = curSizes;
+      return { ...prev, variants: updated };
+    });
+  };
+
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     try {
@@ -615,6 +723,8 @@ export function Admin() {
         isFeatured: productForm.isFeatured,
         isNewArrival: productForm.isNewArrival,
         isBestSeller: productForm.isBestSeller,
+        hasVariants: Boolean(productForm.hasVariants),
+        variants: productForm.hasVariants ? productForm.variants : [],
       };
 
       let res;
@@ -698,6 +808,8 @@ export function Admin() {
       isFeatured: false,
       isNewArrival: false,
       isBestSeller: false,
+      hasVariants: false,
+      variants: [],
       sections: []
     });
     fetchMediaGallery();
@@ -731,6 +843,8 @@ export function Admin() {
       isFeatured: !!p.isFeatured,
       isNewArrival: !!p.isNewArrival,
       isBestSeller: !!p.isBestSeller,
+      hasVariants: !!p.hasVariants,
+      variants: Array.isArray(p.variants) ? p.variants : [],
       sections: p.sections || []
     });
 
@@ -1264,6 +1378,16 @@ export function Admin() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setModalTab('variants')}
+                  className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                    modalTab === 'variants' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Variants ({productForm.variants?.length || 0})</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setModalTab('sections')}
                   className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
                     modalTab === 'sections' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
@@ -1593,6 +1717,206 @@ export function Admin() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* TAB: PRODUCT VARIANTS (COLOR + SIZE/LENGTH) */}
+              {modalTab === 'variants' && (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-teal-50/80 border border-teal-200">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">Product Variants System (Color + Size)</h4>
+                      <p className="text-slate-500 text-xs">Enable multi-color and size/length variants like Amazon.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!productForm.hasVariants && (!productForm.variants || productForm.variants.length === 0)) {
+                          handleAddVariantColor();
+                        } else {
+                          setProductForm((prev) => ({ ...prev, hasVariants: !prev.hasVariants }));
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        productForm.hasVariants
+                          ? 'bg-[#0f4b3f] text-white shadow-xs'
+                          : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {productForm.hasVariants ? '✓ Variants Enabled' : '+ Enable Variants'}
+                    </button>
+                  </div>
+
+                  {productForm.hasVariants && (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-800 text-sm">
+                          Color Variants ({productForm.variants?.length || 0})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleAddVariantColor}
+                          className="px-3.5 py-1.5 rounded-xl bg-[#0f4b3f] text-white text-xs font-bold hover:bg-[#0a352c] transition-colors cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Color Variant</span>
+                        </button>
+                      </div>
+
+                      {(!productForm.variants || productForm.variants.length === 0) && (
+                        <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-300 space-y-2">
+                          <p className="text-slate-500 font-medium text-xs">No color variants added yet.</p>
+                          <button
+                            type="button"
+                            onClick={handleAddVariantColor}
+                            className="px-4 py-2 rounded-xl bg-wagh-teal text-white text-xs font-bold inline-flex items-center gap-1.5"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add First Color Variant</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {productForm.variants?.map((v, vIdx) => (
+                        <div key={v.variantId || vIdx} className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                              <span
+                                className="w-4 h-4 rounded-full border border-slate-300 shrink-0"
+                                style={{ backgroundColor: v.color?.hex || '#0f4b3f' }}
+                              />
+                              <span>Color Variant #{vIdx + 1}: {v.color?.name || 'Unnamed'}</span>
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveVariantColor(vIdx)}
+                              className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors text-xs font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete Color</span>
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-slate-700 mb-1 font-semibold">Color Name *</label>
+                              <input
+                                type="text"
+                                value={v.color?.name || ''}
+                                onChange={(e) => handleUpdateColorField(vIdx, 'name', e.target.value)}
+                                placeholder="e.g. Midnight Black, Deep Teal"
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-wagh-teal"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-slate-700 mb-1 font-semibold">Hex Code *</label>
+                              <div className="flex gap-2 items-center">
+                                <input
+                                  type="color"
+                                  value={v.color?.hex || '#000000'}
+                                  onChange={(e) => handleUpdateColorField(vIdx, 'hex', e.target.value)}
+                                  className="w-9 h-9 p-0.5 rounded-lg border border-slate-200 cursor-pointer shrink-0"
+                                />
+                                <input
+                                  type="text"
+                                  value={v.color?.hex || '#000000'}
+                                  onChange={(e) => handleUpdateColorField(vIdx, 'hex', e.target.value)}
+                                  placeholder="#000000"
+                                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sizes / Length Options Table */}
+                          <div className="space-y-3 pt-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                                Size / Length Options ({v.sizes?.length || 0})
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleAddVariantSize(vIdx)}
+                                className="px-3 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold hover:bg-teal-100 transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Add Size</span>
+                              </button>
+                            </div>
+
+                            {(!v.sizes || v.sizes.length === 0) && (
+                              <p className="text-xs text-rose-600 italic">At least 1 size is required for this color variant.</p>
+                            )}
+
+                            <div className="space-y-2">
+                              {v.sizes?.map((s, sIdx) => (
+                                <div key={s.sku || sIdx} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                                  <div className="col-span-3">
+                                    <label className="block text-[10px] text-slate-500 font-bold uppercase">Size Label</label>
+                                    <input
+                                      type="text"
+                                      value={s.label || ''}
+                                      onChange={(e) => handleUpdateSizeField(vIdx, sIdx, 'label', e.target.value)}
+                                      placeholder="e.g. 2M+2M"
+                                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white"
+                                    />
+                                  </div>
+                                  <div className="col-span-3">
+                                    <label className="block text-[10px] text-slate-500 font-bold uppercase">SKU (Unique)</label>
+                                    <input
+                                      type="text"
+                                      value={s.sku || ''}
+                                      onChange={(e) => handleUpdateSizeField(vIdx, sIdx, 'sku', e.target.value)}
+                                      placeholder="SKU-123"
+                                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-mono uppercase bg-white"
+                                    />
+                                  </div>
+                                  <div className="col-span-2">
+                                    <label className="block text-[10px] text-slate-500 font-bold uppercase">Price (₹)</label>
+                                    <input
+                                      type="number"
+                                      value={s.price}
+                                      onChange={(e) => handleUpdateSizeField(vIdx, sIdx, 'price', e.target.value)}
+                                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold bg-white"
+                                    />
+                                  </div>
+                                  <div className="col-span-2">
+                                    <label className="block text-[10px] text-slate-500 font-bold uppercase">MRP (₹)</label>
+                                    <input
+                                      type="number"
+                                      value={s.mrp}
+                                      onChange={(e) => handleUpdateSizeField(vIdx, sIdx, 'mrp', e.target.value)}
+                                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white"
+                                    />
+                                  </div>
+                                  <div className="col-span-1">
+                                    <label className="block text-[10px] text-slate-500 font-bold uppercase">Stock</label>
+                                    <input
+                                      type="number"
+                                      value={s.stock}
+                                      onChange={(e) => handleUpdateSizeField(vIdx, sIdx, 'stock', e.target.value)}
+                                      className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-bold bg-white"
+                                    />
+                                  </div>
+                                  <div className="col-span-1 flex justify-end pt-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveVariantSize(vIdx, sIdx)}
+                                      className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-100 transition-colors"
+                                      title="Remove Size"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

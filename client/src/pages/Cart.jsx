@@ -182,6 +182,21 @@ export function Cart() {
                       </h3>
                     </Link>
 
+                    {(item.colorName || item.sizeLabel) && (
+                      <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                        {item.colorName && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-mono-tag font-bold">
+                            Color: {item.colorName}
+                          </span>
+                        )}
+                        {item.sizeLabel && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200 text-[11px] font-mono-tag font-bold">
+                            Size: {item.sizeLabel}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     <p className="text-xs text-wagh-muted line-clamp-1 leading-relaxed font-sans pt-0.5">
                       {product.description || product.specs?.outputPower || 'High quality WAGH mobile accessory with fast charging capability.'}
                     </p>
@@ -194,7 +209,7 @@ export function Cart() {
                     <span className="text-xs font-mono-tag text-wagh-muted font-semibold hidden xs:inline">Qty:</span>
                     <div className="flex items-center gap-1.5 bg-gray-50 border border-wagh-border p-1 rounded-xl">
                       <button
-                        onClick={() => updateQty(pId, item.qty - 1)}
+                        onClick={() => updateQty(pId, item.qty - 1, item.sku)}
                         className="w-7 h-7 rounded-lg bg-red-500 hover:bg-red-600 text-white font-extrabold text-sm flex items-center justify-center transition-colors shadow-2xs cursor-pointer active:scale-95"
                         title="Decrease quantity"
                       >
@@ -204,7 +219,7 @@ export function Cart() {
                         {item.qty}
                       </span>
                       <button
-                        onClick={() => updateQty(pId, item.qty + 1)}
+                        onClick={() => updateQty(pId, item.qty + 1, item.sku)}
                         className="w-7 h-7 rounded-lg bg-red-500 hover:bg-red-600 text-white font-extrabold text-sm flex items-center justify-center transition-colors shadow-2xs cursor-pointer active:scale-95"
                         title="Increase quantity"
                       >
@@ -213,7 +228,7 @@ export function Cart() {
                     </div>
 
                     <button
-                      onClick={() => removeFromCart(pId)}
+                      onClick={() => removeFromCart(pId, item.sku)}
                       className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors cursor-pointer flex items-center gap-1 text-xs font-mono-tag font-semibold"
                       title="Remove item"
                     >

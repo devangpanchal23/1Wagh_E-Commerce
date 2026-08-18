@@ -68,16 +68,18 @@ export function CartProvider({ children }) {
     }
   }, [cartItems, user?.uid, isHydrated]);
 
-  const addToCart = (product, qty = 1) => {
+  const addToCart = (product, qty = 1, variantOptions = null) => {
     const pId = product._id || product.id || product;
-    let updated;
+    const sku = variantOptions?.sku || '';
 
     setCartItems((prev) => {
       const index = prev.findIndex((item) => {
         const itemId = item.product?._id || item.product?.id || item.product || item.productId;
-        return itemId === pId;
+        const itemSku = item.sku || '';
+        return itemId === pId && (sku ? itemSku === sku : !itemSku);
       });
 
+      let updated;
       if (index > -1) {
         updated = [...prev];
         updated[index] = {
@@ -85,7 +87,16 @@ export function CartProvider({ children }) {
           qty: updated[index].qty + qty,
         };
       } else {
-        updated = [...prev, { product, qty }];
+        const newItem = {
+          product,
+          qty,
+          variantId: variantOptions?.variantId || null,
+          sku: variantOptions?.sku || '',
+          colorName: variantOptions?.colorName || '',
+          sizeLabel: variantOptions?.sizeLabel || '',
+          price: variantOptions?.price !== undefined ? variantOptions.price : (product.price || 0),
+        };
+        updated = [...prev, newItem];
       }
 
       if (user?.uid) {
@@ -94,19 +105,21 @@ export function CartProvider({ children }) {
       return updated;
     });
 
-    addToast(`Added "${product.name || 'item'}" to cart`, 'success');
+    const label = variantOptions?.sizeLabel ? `${product.name} (${variantOptions.colorName} / ${variantOptions.sizeLabel})` : (product.name || 'Item');
+    addToast(`Added "${label}" to cart`, 'success');
   };
 
-  const updateQty = (productId, newQty) => {
+  const updateQty = (productId, newQty, sku = '') => {
     if (newQty <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, sku);
       return;
     }
 
     setCartItems((prev) => {
       const updated = prev.map((item) => {
         const pId = item.product?._id || item.product?.id || item.product || item.productId;
-        if (pId === productId) {
+        const itemSku = item.sku || '';
+        if (pId === productId && (sku ? itemSku === sku : !itemSku)) {
           return { ...item, qty: newQty };
         }
         return item;
@@ -119,10 +132,12 @@ export function CartProvider({ children }) {
     });
   };
 
-  const removeFromCart = (productId) => {
+  const removeFromCart = (productId, sku = '') => {
     setCartItems((prev) => {
       const updated = prev.filter((item) => {
         const pId = item.product?._id || item.product?.id || item.product || item.productId;
+        const itemSku = item.sku || '';
+        if (sku) return !(pId === productId && itemSku === sku);
         return pId !== productId;
       });
 
@@ -159,7 +174,7 @@ export function CartProvider({ children }) {
   const totalItemCount = cartItems.reduce((sum, item) => sum + (item.qty || 1), 0);
 
   const subtotal = cartItems.reduce((sum, item) => {
-    const price = item.product?.price || item.price || 0;
+    const price = item.price !== undefined ? item.price : (item.product?.price || 0);
     return sum + price * (item.qty || 1);
   }, 0);
 

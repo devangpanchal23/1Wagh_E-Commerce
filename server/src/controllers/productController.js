@@ -6,7 +6,7 @@ const cache = require('../utils/cache');
 // Fields a product grid card actually renders. Skipping `sections` and `description`
 // keeps listing payloads small — those are only needed on the detail page.
 const LIST_PROJECTION =
-  'name slug price mrp images category brand stock ratingAvg ratingCount isFeatured isNewArrival isBestSeller createdAt';
+  'name slug price mrp images category brand stock ratingAvg ratingCount isFeatured isNewArrival isBestSeller hasVariants variants createdAt';
 
 // @desc    Get products with search, filter, sort & pagination
 // @route   GET /api/v1/products
@@ -167,7 +167,7 @@ exports.getProductById = async (req, res, next) => {
 // @route   POST /api/v1/products
 exports.createProduct = async (req, res, next) => {
   try {
-    const { name, description, price, mrp, images, category, brand, specs, stock, isFeatured, isNewArrival, isBestSeller } = req.body;
+    const { name, description, price, mrp, images, category, brand, specs, stock, isFeatured, isNewArrival, isBestSeller, hasVariants, variants } = req.body;
     
     const resolvedCategory = await resolveCategoryId(category);
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now();
@@ -182,10 +182,12 @@ exports.createProduct = async (req, res, next) => {
       category: resolvedCategory,
       brand: brand || 'WAGH',
       specs: specs || {},
-      stock: stock || 100,
+      stock: stock !== undefined ? stock : 100,
       isFeatured: !!isFeatured,
       isNewArrival: !!isNewArrival,
       isBestSeller: !!isBestSeller,
+      hasVariants: !!hasVariants,
+      variants: variants || [],
     });
 
     cache.invalidate('products:', 'product:');

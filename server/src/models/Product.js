@@ -97,7 +97,38 @@ const productSchema = new mongoose.Schema({
   isBestSeller: {
     type: Boolean,
     default: false,
-  }
+  },
+
+  hasVariants: {
+    type: Boolean,
+    default: false,
+  },
+  variants: [
+    {
+      variantId: {
+        type: mongoose.Schema.Types.ObjectId,
+        default: () => new mongoose.Types.ObjectId(),
+      },
+      color: {
+        name: { type: String, trim: true, default: '' },
+        hex: { type: String, trim: true, default: '' },
+        swatchImage: { type: String, default: '' },
+      },
+      images: {
+        type: [mongoose.Schema.Types.Mixed],
+        default: [],
+      },
+      sizes: [
+        {
+          sku: { type: String, trim: true, required: true },
+          label: { type: String, trim: true, required: true },
+          price: { type: Number, required: true, min: 0 },
+          mrp: { type: Number, required: true, min: 0 },
+          stock: { type: Number, required: true, min: 0, default: 0 },
+        }
+      ]
+    }
+  ]
 }, {
   timestamps: true,
 });
@@ -143,7 +174,7 @@ productSchema.index(
   { partialFilterExpression: { isBestSeller: true } }
 );
 
-// Auto-generate slug and resolve category before validation
+// Auto-generate slug, resolve category, and validate variants before validation
 productSchema.pre('validate', async function(next) {
   try {
     if (this.name && !this.slug) {
@@ -155,6 +186,48 @@ productSchema.pre('validate', async function(next) {
 
     const { resolveCategoryId } = require('../utils/categoryResolver');
     this.category = await resolveCategoryId(this.category);
+
+    if (this.hasVariants) {
+      if (!this.variants || !Array.isArray(this.variants) || this.variants.length === 0) {
+        return next(new Error('At least 1 color variant is required when variants are enabled.'));
+      }
+
+      const skusInThisProduct = new Set();
+
+      for (let i = 0; i < this.variants.length; i++) {
+        const v = this.variants[i];
+        if (!v.variantId) {
+          v.variantId = new mongoose.Types.ObjectId();
+        }
+        if (!v.sizes || !Array.isArray(v.sizes) || v.sizes.length === 0) {
+          return next(new Error(`Color variant '${v.color?.name || i + 1}' must have at least 1 size.`));
+        }
+
+        for (const s of v.sizes) {
+          if (!s.sku || !s.sku.trim()) {
+            return next(new Error(`SKU is required for size '${s.label}' in color '${v.color?.name || i + 1}'.`));
+          }
+          const cleanSku = s.sku.trim().toUpperCase();
+          s.sku = cleanSku;
+
+          if (skusInThisProduct.has(cleanSku)) {
+            return next(new Error(`Duplicate SKU '${cleanSku}' found in product variants.`));
+          }
+          skusInThisProduct.add(cleanSku);
+        }
+      }
+
+      // Check unique SKU across whole collection
+      const existingOtherProduct = await this.constructor.findOne({
+        _id: { $ne: this._id },
+        'variants.sizes.sku': { $in: Array.from(skusInThisProduct) },
+      }).select('_id name');
+
+      if (existingOtherProduct) {
+        return next(new Error(`One or more SKUs are already in use by product '${existingOtherProduct.name}'.`));
+      }
+    }
+
     next();
   } catch (err) {
     next(err);

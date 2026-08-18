@@ -15,6 +15,22 @@ const cartItemSchema = new mongoose.Schema({
   priceAtAdd: {
     type: Number,
     required: true,
+  },
+  variantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
+  sku: {
+    type: String,
+    default: '',
+  },
+  colorName: {
+    type: String,
+    default: '',
+  },
+  sizeLabel: {
+    type: String,
+    default: '',
   }
 });
 

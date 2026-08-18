@@ -1,14 +1,10 @@
 const Cart = require('../models/Cart');
 
-// A cart line only renders an image, name, price and stock — pulling the full
-// product document (description + sections) for every item was the bulk of the
-// cart payload.
-const CART_PRODUCT_FIELDS = 'name slug price mrp images stock brand';
+// A cart line needs product details and variants for price/stock calculation
+const CART_PRODUCT_FIELDS = 'name slug price mrp images stock brand hasVariants variants';
 
 const POPULATE_ITEMS = { path: 'items.product', select: CART_PRODUCT_FIELDS };
 
-// Populates the in-memory document instead of re-querying it after a write,
-// which removes one full round trip from every cart mutation.
 const withProducts = async (cart) => {
   await cart.populate(POPULATE_ITEMS);
   return cart;
@@ -37,17 +33,30 @@ exports.getCart = async (req, res, next) => {
 
 exports.addToCart = async (req, res, next) => {
   try {
-    const { productId, qty = 1, price } = req.body;
+    const { productId, qty = 1, price, variantId, sku, colorName, sizeLabel } = req.body;
     let cart = await Cart.findOne({ user: req.user._id });
     if (!cart) {
       cart = await Cart.create({ user: req.user._id, items: [] });
     }
 
-    const itemIndex = cart.items.findIndex(item => item.product.toString() === productId);
+    const itemIndex = cart.items.findIndex(item => {
+      const sameProduct = item.product.toString() === productId;
+      if (sku) return sameProduct && item.sku === sku;
+      return sameProduct && !item.sku;
+    });
+
     if (itemIndex > -1) {
       cart.items[itemIndex].qty += qty;
     } else {
-      cart.items.push({ product: productId, qty, priceAtAdd: price });
+      cart.items.push({
+        product: productId,
+        qty,
+        priceAtAdd: price,
+        variantId: variantId || null,
+        sku: sku || '',
+        colorName: colorName || '',
+        sizeLabel: sizeLabel || '',
+      });
     }
 
     await cart.save();
@@ -65,11 +74,16 @@ exports.addToCart = async (req, res, next) => {
 
 exports.updateCartQty = async (req, res, next) => {
   try {
-    const { productId, qty } = req.body;
+    const { productId, sku, qty } = req.body;
     const cart = await Cart.findOne({ user: req.user._id });
     if (!cart) return res.status(404).json({ success: false, message: 'Cart not found' });
 
-    const itemIndex = cart.items.findIndex(item => item.product.toString() === productId);
+    const itemIndex = cart.items.findIndex(item => {
+      const sameProduct = item.product.toString() === productId;
+      if (sku) return sameProduct && item.sku === sku;
+      return sameProduct && !item.sku;
+    });
+
     if (itemIndex > -1) {
       if (qty <= 0) {
         cart.items.splice(itemIndex, 1);
@@ -93,10 +107,17 @@ exports.updateCartQty = async (req, res, next) => {
 
 exports.removeFromCart = async (req, res, next) => {
   try {
+    const { productId } = req.params;
+    const { sku } = req.query;
     const cart = await Cart.findOne({ user: req.user._id });
     if (!cart) return res.status(404).json({ success: false, message: 'Cart not found' });
 
-    cart.items = cart.items.filter(item => item.product.toString() !== req.params.productId);
+    cart.items = cart.items.filter(item => {
+      const sameProduct = item.product.toString() === productId;
+      if (sku) return !(sameProduct && item.sku === sku);
+      return !sameProduct;
+    });
+
     await cart.save();
     await withProducts(cart);
 
@@ -112,7 +133,7 @@ exports.removeFromCart = async (req, res, next) => {
 
 exports.syncCart = async (req, res, next) => {
   try {
-    const { items } = req.body; // array of { productId, qty, price }
+    const { items } = req.body; // array of { productId, qty, price, variantId, sku, colorName, sizeLabel }
     let cart = await Cart.findOne({ user: req.user._id });
     if (!cart) {
       cart = await Cart.create({ user: req.user._id, items: [] });
@@ -120,14 +141,23 @@ exports.syncCart = async (req, res, next) => {
 
     if (Array.isArray(items)) {
       items.forEach(localItem => {
-        const idx = cart.items.findIndex(i => i.product.toString() === localItem.productId);
+        const idx = cart.items.findIndex(i => {
+          const sameProduct = i.product.toString() === localItem.productId;
+          if (localItem.sku) return sameProduct && i.sku === localItem.sku;
+          return sameProduct && !i.sku;
+        });
+
         if (idx > -1) {
           cart.items[idx].qty = Math.max(cart.items[idx].qty, localItem.qty);
         } else {
           cart.items.push({
             product: localItem.productId,
             qty: localItem.qty,
-            priceAtAdd: localItem.price
+            priceAtAdd: localItem.price,
+            variantId: localItem.variantId || null,
+            sku: localItem.sku || '',
+            colorName: localItem.colorName || '',
+            sizeLabel: localItem.sizeLabel || '',
           });
         }
       });
