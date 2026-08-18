@@ -20,7 +20,7 @@ const maskEmail = (email) => {
 /**
  * Delivers 6-digit OTP email to target recipient.
  * Supports:
- * 1. Nodemailer SMTP (Gmail / Brevo / SendGrid / Custom SMTP)
+ * 1. Nodemailer SMTP (Gmail / Brevo / SendGrid / Custom SMTP) with dual-port fallback (587 & 465)
  * 2. Resend API
  *
  * @param {string} toEmail - Recipient email address
@@ -97,32 +97,50 @@ async function sendOtpEmail(toEmail, otp, options = {}) {
     ? `Hello,\n\nWe received a request to reset the password for your WAGH Mobile account.\n\nYour One-Time Password (OTP) is: ${otp}\n\nPlease enter this OTP on the WAGH Mobile website to continue resetting your password.\n\nFor your security:\n- This OTP is valid for 10 minutes.\n- Do not share this OTP with anyone.\n- WAGH Mobile will never ask for your password or OTP.\n- If you did not request a password reset, you can safely ignore this email.\n\nRegards,\nWAGH Mobile Team`
     : `Hello,\n\nYour verification code for your WAGH Mobile account is: ${otp}\n\nThis code expires in 10 minutes. Do not share this code with anyone.\n\nRegards,\nWAGH Mobile Team`;
 
-  // 1. Try Nodemailer SMTP (preferred worldwide delivery)
+  // 1. Try Nodemailer SMTP with dual-port resilience (587 & 465) and explicit timeouts
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT) === 465,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
+    const defaultPort = Number(process.env.SMTP_PORT) || 587;
+    const defaultSecure = process.env.SMTP_SECURE === 'true' || defaultPort === 465;
 
-      const info = await transporter.sendMail({
-        from: process.env.SMTP_FROM || `WAGH Mobile Accessories <${process.env.SMTP_USER}>`,
-        to: cleanEmail,
-        subject,
-        html: htmlContent,
-        text: textContent,
-      });
+    const portsToTry = [
+      { port: defaultPort, secure: defaultSecure },
+      { port: 465, secure: true },
+      { port: 587, secure: false },
+    ];
 
-      console.log(`[SMTP EMAIL DELIVERED] OTP email sent to ${maskEmail(cleanEmail)} via SMTP:`, info.messageId);
-      return { success: true, delivered: true, provider: 'SMTP', messageId: info.messageId };
-    } catch (smtpErr) {
-      console.error(`[SMTP EMAIL ERROR] Failed to send email to ${maskEmail(cleanEmail)} via SMTP:`, smtpErr.message);
-      // Fall through to Resend if available
+    // Deduplicate port configurations
+    const uniquePorts = portsToTry.filter(
+      (v, i, a) => a.findIndex((t) => t.port === v.port && t.secure === v.secure) === i
+    );
+
+    for (const config of uniquePorts) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'smtp.gmail.com',
+          port: config.port,
+          secure: config.secure,
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+          connectionTimeout: 6000,
+          greetingTimeout: 6000,
+          socketTimeout: 8000,
+        });
+
+        const info = await transporter.sendMail({
+          from: process.env.SMTP_FROM || `WAGH Mobile Accessories <${process.env.SMTP_USER}>`,
+          to: cleanEmail,
+          subject,
+          html: htmlContent,
+          text: textContent,
+        });
+
+        console.log(`[SMTP EMAIL DELIVERED] OTP email sent to ${maskEmail(cleanEmail)} via SMTP (port ${config.port}):`, info.messageId);
+        return { success: true, delivered: true, provider: `SMTP:${config.port}`, messageId: info.messageId };
+      } catch (smtpErr) {
+        console.error(`[SMTP EMAIL ERROR] Port ${config.port} failed for ${maskEmail(cleanEmail)}:`, smtpErr.message);
+      }
     }
   }
 
@@ -156,7 +174,7 @@ async function sendOtpEmail(toEmail, otp, options = {}) {
   }
 
   // If no email service was able to deliver the email in production
-  console.error(`[EMAIL DELIVERY FAILED] Could not deliver email to ${maskEmail(cleanEmail)}. Check SMTP credentials.`);
+  console.error(`[EMAIL DELIVERY FAILED] Could not deliver email to ${maskEmail(cleanEmail)}. Check SMTP credentials on server.`);
   return {
     success: false,
     delivered: false,
