@@ -2,10 +2,21 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
 
-const { connectDB, ensureDBConnection, mongoose } = require('./config/db');
+const envPath = fs.existsSync(path.join(__dirname, '../.env'))
+  ? path.join(__dirname, '../.env')
+  : fs.existsSync(path.join(__dirname, '../env'))
+    ? path.join(__dirname, '../env')
+    : null;
+
+if (envPath) {
+  require('dotenv').config({ path: envPath });
+} else {
+  require('dotenv').config();
+}
+
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');

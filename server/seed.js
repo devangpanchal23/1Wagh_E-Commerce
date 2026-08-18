@@ -1,6 +1,19 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 
+const envPath = fs.existsSync(path.join(__dirname, '.env'))
+  ? path.join(__dirname, '.env')
+  : fs.existsSync(path.join(__dirname, 'env'))
+    ? path.join(__dirname, 'env')
+    : null;
+
+if (envPath) {
+  require('dotenv').config({ path: envPath });
+} else {
+  require('dotenv').config();
+}
+
+const mongoose = require('mongoose');
 const User = require('./src/models/User');
 const Category = require('./src/models/Category');
 const Product = require('./src/models/Product');
