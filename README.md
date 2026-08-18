@@ -1,134 +1,98 @@
 <div align="center">
 
-  <img src="client/public/assets/branding/wagh-100w-launch-banner.png" alt="WAGH Mobile Accessories Banner" width="100%" style="border-radius: 10px;" />
+  <img src="client/public/assets/branding/wagh-100w-launch-banner.png" alt="WAGH Banner" width="100%" style="border-radius: 12px; margin-bottom: 20px;" />
 
-  <br /><br />
+  # ⚡ WAGH Mobile Accessories
+  ### *Full-Stack MERN E-Commerce Platform*
 
-  # ⚡ WAGH Mobile Accessories — Full MERN Stack Platform
-
-  > *"Power that feels premium. Speed you can trust."*
-
-  **[🌐 View Live Demo](https://wagh-e-commerce.vercel.app/)** • **[📦 GitHub Repository](https://github.com/devangpanchal23/1Wagh_E-Commerce)**
+  [![Live Demo](https://img.shields.io/badge/Live_Demo-v1.1.0-0D5C52?style=for-the-badge&logo=vercel&logoColor=white)](https://wagh-e-commerce.vercel.app/)
+  [![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/devangpanchal23/1Wagh_E-Commerce)
+  [![License](https://img.shields.io/badge/License-MIT-D4A94F?style=for-the-badge)](LICENSE)
 
   <br />
 
-  [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
-  [![NodeJS](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
-  [![ExpressJS](https://img.shields.io/badge/Express.js-4.x-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
-  [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
-  [![TailwindCSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-  [![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
-  [![Deployment](https://img.shields.io/badge/Deployed%20on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://wagh-e-commerce.vercel.app/)
+  > **"Power that feels premium. Speed you can trust."**
+  >
+  > A modern, end-to-end e-commerce platform for high-performance mobile accessories, featuring dynamic product catalogs, multi-image galleries, JWT authentication, cart & checkout workflows, and an admin management portal.
+
+  <br />
+
+  ```
+  MongoDB  •  Express.js  •  React 18 (Vite)  •  Node.js  •  Tailwind CSS
+  ```
 
 </div>
 
 ---
 
-## 📌 Overview
+## ✨ Key Features
 
-**WAGH Mobile Accessories** is a full-featured, modern E-Commerce web application built end-to-end using the MERN stack (MongoDB, Express.js, React 18, Node.js) with custom Tailwind CSS design tokens. 
-
-Designed for high-performance mobile accessories retailing, it features interactive product showcases, multi-image product galleries, dynamic cart management, promo code validation, Razorpay & COD payment gateways, wishlist, user profiles, and an auth-gated administrative portal.
-
----
-
-## 🛠️ Tech Stack & Architecture
-
-### **Frontend**
-- **Framework**: React 18 (Vite SPA)
-- **Routing**: React Router v6
-- **Styling**: Tailwind CSS with custom design tokens
-- **Icons**: Lucide React Icons
-
-### **Backend**
-- **Runtime**: Node.js & Express.js (RESTful API, MVC Architecture)
-- **Database**: MongoDB Atlas with Mongoose ORM
-- **Authentication**: JWT (JSON Web Tokens) with HTTP-only security & `bcryptjs` password hashing
-
-### **Design Tokens**
-| Token | Value | Usage |
-| :--- | :--- | :--- |
-| **Primary Deep Teal** | `#0D5C52` | Brand Headers & Core Accents |
-| **Accent Amber Gold** | `#D4A94F` | CTA Buttons & Badges |
-| **Off-White BG** | `#FAF9F6` | Light-mode canvas background |
-| **Headlines Font** | `Fraunces` | Bold luxury headlines |
-| **Body Font** | `Manrope` | Clean body typography |
-| **Badges Font** | `Space Mono` | Price tags & code badges |
+- **🛍️ Storefront Catalog**: Live search, category filtering (Chargers, Power Banks, Cables, Audio), price sliders, and pagination.
+- **🖼️ Interactive Product Page**: 4-image interactive gallery, technical specifications, stock status, and customer reviews.
+- **🛒 Dynamic Cart & Checkout**: Quantity adjustments, promo code validation (`WAGH200`), Razorpay test gateway, and COD support.
+- **🔐 User Dashboard & Wishlist**: Tabbed Auth (Login/Register), user profile management, order history tracking, and saved items.
+- **🛡️ Admin Portal**: Auth-gated dashboard for product CRUD operations, multi-image URL uploads, order status updates, and sales stats.
 
 ---
 
-## 🚀 Quick Start & Installation
+## 💻 Tech Stack
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) (v16+)
-- [MongoDB](https://www.mongodb.com/) (Local instance or MongoDB Atlas Connection URI)
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 18, Vite, React Router v6, Tailwind CSS, Lucide Icons |
+| **Backend** | Node.js, Express.js (REST API, MVC Architecture) |
+| **Database** | MongoDB Atlas, Mongoose ORM |
+| **Security** | JWT (JSON Web Tokens), `bcryptjs` Password Hashing |
+| **Hosting** | Vercel (Frontend & Serverless deployment) |
 
 ---
 
-### 1️⃣ Backend Setup & Database Seeding
+## 🎨 Design System
+
+- 🟢 **Primary Deep Teal**: `#0D5C52`
+- 🟡 **Accent Amber Gold**: `#D4A94F`
+- ⚪ **Background**: `#FAF9F6`
+- 🔤 **Typography**: *Fraunces* (Headlines), *Manrope* (Body), *Space Mono* (Badges)
+
+---
+
+## ⚡ Quick Start Guide
+
+### 1. Backend Setup
 
 ```bash
-# Navigate to backend directory
 cd server
-
-# Install dependencies
 npm install
-
-# Seed database with sample 45W Chargers, Power Banks, Cables, Audio & Admin user
-npm run seed
-
-# Start development REST API server (Runs on http://localhost:5050)
-npm run dev
+npm run seed     # Seeds MongoDB with sample products & admin user
+npm run dev      # Starts REST API on http://localhost:5050
 ```
 
-#### 🔑 Default Seeded Credentials
+> **Default Seeded Accounts:**
+> - **Admin**: `admin@wagh.com` / `admin123password`
+> - **Customer**: `devang@example.com` / `customer123password`
 
-| Role | Email | Password | Access Level |
-| :--- | :--- | :--- | :--- |
-| 🛡️ **Admin** | `admin@wagh.com` | `admin123password` | Full CRUD & Statistics Portal |
-| 👤 **Customer** | `devang@example.com` | `customer123password` | Storefront & User Dashboard |
-
----
-
-### 2️⃣ Frontend Setup & Development Server
+### 2. Frontend Setup
 
 ```bash
-# Navigate to frontend directory
 cd client
-
-# Install dependencies
 npm install
-
-# Start Vite React development server (Runs on http://localhost:5173)
-npm run dev
+npm run dev      # Starts React Vite dev server on http://localhost:5173
 ```
 
 ---
 
-## 🌐 Application Routes
+## 🗺️ Application Routes
 
-| Route | Page | Description |
-| :--- | :--- | :--- |
-| `/` | **Home** | Hero banner, Stat strip, Feature grid, Best Sellers, Flagship banner, Trust strip, Newsletter |
-| `/shop` | **Shop Catalog** | Catalog with category/price/stock sidebar filters, sorting, and pagination |
-| `/product/:id` | **Product Detail** | 4-image interactive gallery, product specifications, customer reviews |
-| `/cart` | **Cart** | Stepper quantity adjustments, promo code `WAGH200`, subtotal/shipping totals |
-| `/checkout` | **Checkout** | Shipping address form, Razorpay test mode / COD selection, order confirmation |
-| `/about` | **About Brand** | Brand narrative, mission, 3 WAGH pillars, and warranty highlights |
-| `/contact` | **Contact Us** | Interactive form, phone (+91 90544 05305), email, HQ info |
-| `/profile` | **User Profile** | Auth tabbed forms (Login/Register), profile details, order history, saved wishlist |
-| `/admin` | **Admin Portal** | Auth-gated dashboard: Product CRUD with 4-image URL uploads, order management & statistics |
+- `/` — **Home** (Hero banner, Best Sellers, Flagship banner, Newsletter)
+- `/shop` — **Shop Catalog** (Sidebar filters, sorting, search)
+- `/product/:id` — **Product Detail** (Gallery, specs, customer reviews)
+- `/cart` — **Cart** (Quantity stepper, promo codes, order summary)
+- `/checkout` — **Checkout** (Address form, Razorpay / COD selection)
+- `/profile` — **User Portal** (Auth, order history, wishlist)
+- `/admin` — **Admin Portal** (Product CRUD, order management, stats)
 
 ---
 
-## 🖼️ Media & Branding
-
-<div align="center">
-  <img src="client/public/assets/branding/wagh-all-in-one-packaging-banner.png" alt="WAGH Packaging Banner" width="100%" style="border-radius: 8px;" />
-</div>
-
----
-
-## 📄 License & Attribution
+## 📄 License & Credits
 
 Distributed under the MIT License. Forked from [waghOnline/Wagh_E-Commerce](https://github.com/waghOnline/Wagh_E-Commerce) and maintained by [Devang Panchal](https://github.com/devangpanchal23).
