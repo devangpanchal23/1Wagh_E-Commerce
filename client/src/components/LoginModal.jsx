@@ -75,7 +75,7 @@ export function LoginModal({ isOpen, onClose }) {
 
     if (response.success) {
       onClose();
-      navigate('/verify-otp', { state: { email: response.email, devOtp: response.devOtp } });
+      navigate('/verify-otp', { state: { email: response.email } });
     }
   };
 

@@ -81,7 +81,7 @@ export function AuthProvider({ children }) {
 
       if (res && res.success) {
         addToast(res.message || 'Registration successful! Please check your email for the OTP.', 'success');
-        return { success: true, email: res.email, devOtp: res.devOtp };
+        return { success: true, email: res.email };
       }
       return { success: false, message: res?.message || 'Registration failed' };
     } catch (err) {
@@ -117,7 +117,7 @@ export function AuthProvider({ children }) {
 
       if (res && res.success) {
         addToast(res.message || 'Password reset OTP sent to your email.', 'success');
-        return { success: true, devOtp: res.devOtp };
+        return { success: true };
       }
       return { success: false, message: res?.message || 'Failed to send reset code' };
     } catch (err) {

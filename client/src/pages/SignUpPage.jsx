@@ -34,7 +34,7 @@ export default function SignUpPage() {
     setSubmitting(false);
 
     if (response.success) {
-      navigate('/verify-otp', { state: { email: response.email, devOtp: response.devOtp } });
+      navigate('/verify-otp', { state: { email: response.email } });
     }
   };
 

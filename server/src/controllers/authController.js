@@ -79,11 +79,17 @@ exports.registerUser = async (req, res, next) => {
 
     const sendResult = await sendOtpEmail(cleanEmail, otp);
 
+    if (sendResult && sendResult.success === false) {
+      return res.status(500).json({
+        success: false,
+        message: "We couldn't send the verification OTP right now. Please try again in a moment.",
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Registration successful! Verification code sent to email.',
       email: user.email,
-      ...(sendResult?.devOtp ? { devOtp: sendResult.devOtp } : {}),
     });
   } catch (error) {
     next(error);
@@ -292,6 +298,7 @@ exports.logoutUser = async (req, res, next) => {
 };
 
 // @desc    Request Password Reset OTP
+// @desc    Request Password Reset OTP
 // @route   POST /api/v1/auth/forgot-password
 exports.forgotPassword = async (req, res, next) => {
   try {
@@ -317,12 +324,18 @@ exports.forgotPassword = async (req, res, next) => {
     user.emailOtpLastSentAt = new Date();
     await user.save();
 
-    const sendResult = await sendOtpEmail(cleanEmail, otp);
+    const sendResult = await sendOtpEmail(cleanEmail, otp, { type: 'reset_password' });
+
+    if (sendResult && sendResult.success === false) {
+      return res.status(500).json({
+        success: false,
+        message: "We couldn't send the OTP right now. Please try again in a moment.",
+      });
+    }
 
     res.json({
       success: true,
-      message: 'Password reset code sent to your email.',
-      ...(sendResult?.devOtp ? { devOtp: sendResult.devOtp } : {}),
+      message: 'Password reset OTP has been sent to your registered email address.',
     });
   } catch (error) {
     next(error);
@@ -357,12 +370,14 @@ exports.resetPassword = async (req, res, next) => {
       user.emailOtpHash = null;
       user.emailOtpExpiresAt = null;
       await user.save();
-      return res.status(400).json({ success: false, message: 'Reset code expired. Please request a new OTP.' });
+      return res.status(400).json({ success: false, message: 'This OTP has expired. Please request a new OTP.' });
     }
 
     const isMatch = await bcrypt.compare(otp.trim(), user.emailOtpHash);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Incorrect reset code.' });
+      user.emailOtpAttempts = (user.emailOtpAttempts || 0) + 1;
+      await user.save();
+      return res.status(400).json({ success: false, message: 'The OTP you entered is incorrect. Please try again.' });
     }
 
     user.password = newPassword; // Pre-save hook hashes password
@@ -373,7 +388,7 @@ exports.resetPassword = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Password reset successful! You can now log in with your new password.',
+      message: 'Your password has been reset successfully. You can now log in with your new password.',
     });
   } catch (error) {
     next(error);
@@ -563,13 +578,17 @@ exports.sendPhoneOtp = async (req, res, next) => {
 
     const smsResult = await sendRealSmsOtp(cleanPhone, otp);
 
+    if (!smsResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: "We couldn't send the SMS OTP right now. Please try again in a moment.",
+      });
+    }
+
     res.json({
       success: true,
-      message: smsResult.success
-        ? `Verification code sent via ${smsResult.provider} SMS to +91 ${cleanPhone}`
-        : `Verification code generated for +91 ${cleanPhone}`,
-      smsDelivered: smsResult.success,
-      ...(!smsResult.success ? { devOtp: otp } : {}),
+      message: `Verification code sent via ${smsResult.provider} SMS to +91 ${cleanPhone}`,
+      smsDelivered: true,
     });
   } catch (error) {
     next(error);
@@ -664,10 +683,16 @@ exports.sendEmailOtp = async (req, res, next) => {
 
     const sendResult = await sendOtpEmail(cleanEmail, otp);
 
+    if (sendResult && sendResult.success === false) {
+      return res.status(500).json({
+        success: false,
+        message: "We couldn't send the OTP right now. Please try again in a moment.",
+      });
+    }
+
     res.json({
       success: true,
       message: `Verification OTP sent to email ${cleanEmail}`,
-      ...(sendResult?.devOtp ? { devOtp: sendResult.devOtp } : {}),
     });
   } catch (error) {
     next(error);

@@ -10,11 +10,13 @@ export default function ForgotPasswordPage() {
 
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
+    setServerError('');
 
     const result = forgotPasswordSchema.safeParse({ email });
     if (!result.success) {
@@ -31,7 +33,9 @@ export default function ForgotPasswordPage() {
     setSubmitting(false);
 
     if (response.success) {
-      navigate('/reset-password', { state: { email, devOtp: response.devOtp } });
+      navigate('/reset-password', { state: { email } });
+    } else {
+      setServerError(response.message || "We couldn't send the OTP right now. Please try again in a moment.");
     }
   };
 
@@ -47,6 +51,12 @@ export default function ForgotPasswordPage() {
             Enter your registered email address and we'll send you a password reset code.
           </p>
         </div>
+
+        {serverError && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3.5 rounded-2xl flex items-center gap-2">
+            <span>⚠️ {serverError}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

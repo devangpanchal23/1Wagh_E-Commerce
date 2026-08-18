@@ -10,10 +10,9 @@ export default function VerifyOtpPage() {
   const location = useLocation();
 
   const initialEmail = location.state?.email || '';
-  const devOtp = location.state?.devOtp || null;
 
   const [email, setEmail] = useState(initialEmail);
-  const [otp, setOtp] = useState(devOtp || '');
+  const [otp, setOtp] = useState('');
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
@@ -63,12 +62,6 @@ export default function VerifyOtpPage() {
             Enter the 6-digit verification code sent to your email address.
           </p>
         </div>
-
-        {devOtp && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-2xl text-center">
-            <strong>Development Code:</strong> <span className="font-mono font-bold tracking-widest">{devOtp}</span>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

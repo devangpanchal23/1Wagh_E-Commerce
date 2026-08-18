@@ -10,18 +10,19 @@ export default function ResetPasswordPage() {
   const location = useLocation();
 
   const initialEmail = location.state?.email || '';
-  const devOtp = location.state?.devOtp || null;
 
   const [email, setEmail] = useState(initialEmail);
-  const [otp, setOtp] = useState(devOtp || '');
+  const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
+    setServerError('');
 
     const result = resetPasswordSchema.safeParse({ email, otp, newPassword, confirmNewPassword });
     if (!result.success) {
@@ -39,6 +40,8 @@ export default function ResetPasswordPage() {
 
     if (response.success) {
       navigate('/sign-in', { state: { message: 'Password reset successful! Please log in.' } });
+    } else {
+      setServerError(response.message || 'Failed to reset password. Please try again.');
     }
   };
 
@@ -55,9 +58,9 @@ export default function ResetPasswordPage() {
           </p>
         </div>
 
-        {devOtp && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-2xl text-center">
-            <strong>Development Code:</strong> <span className="font-mono font-bold tracking-widest">{devOtp}</span>
+        {serverError && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3.5 rounded-2xl flex items-center gap-2">
+            <span>⚠️ {serverError}</span>
           </div>
         )}
 
