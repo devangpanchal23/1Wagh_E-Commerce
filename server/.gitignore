@@ -6,6 +6,10 @@ node_modules/
 .env.local
 .env.*.local
 .env.bak
+env
+env.bak
+env.example
+env.backup*
 
 # Logs
 *.log

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
@@ -17,6 +18,8 @@ if (envPath) {
   require('dotenv').config();
 }
 
+const { connectDB, ensureDBConnection, mongoose } = require('./config/db');
+
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
@@ -31,8 +34,6 @@ const receiptRoutes = require('./routes/receiptRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
-
-const path = require('path');
 
 // Trust the proxy so rate limiting and protocol detection work behind Vercel/Nginx
 app.set('trust proxy', 1);
