@@ -44,44 +44,68 @@ exports.createOrder = async (req, res, next) => {
       calculatedSubtotal += item.price * item.qty;
     }
 
-    // Coupon re-validation and discount calculation
+    // Coupon re-validation, per-user check, discount calculation, and ATOMIC consumption
     let appliedCouponCode = '';
     let calculatedDiscount = 0;
+    let couponToConsumeId = null;
 
     if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
       const codeUpper = couponCode.trim().toUpperCase();
+      const now = new Date();
+
       const coupon = await Coupon.findOne({ code: codeUpper });
 
-      if (coupon && coupon.status === 'published' && new Date() <= new Date(coupon.expiryDate)) {
-        if (coupon.usageLimit === null || coupon.usageCount < coupon.usageLimit) {
-          if (calculatedSubtotal >= coupon.minCartValue) {
-            appliedCouponCode = coupon.code;
-            if (coupon.discountType === 'percentage') {
-              calculatedDiscount = (calculatedSubtotal * coupon.discountValue) / 100;
-              if (coupon.maxDiscountCap && coupon.maxDiscountCap > 0) {
-                calculatedDiscount = Math.min(calculatedDiscount, coupon.maxDiscountCap);
-              }
-            } else if (coupon.discountType === 'flat') {
-              calculatedDiscount = coupon.discountValue;
-            }
-            calculatedDiscount = Math.min(calculatedDiscount, calculatedSubtotal);
+      if (!coupon) {
+        return res.status(400).json({ success: false, message: `Coupon '${codeUpper}' not found.` });
+      }
 
-            // Increment usage count and record user usage
-            coupon.usageCount = (coupon.usageCount || 0) + 1;
-            if (req.user?._id) {
-              if (!coupon.usedBy) coupon.usedBy = [];
-              const userIdx = coupon.usedBy.findIndex(u => u.user && u.user.toString() === req.user._id.toString());
-              if (userIdx >= 0) {
-                coupon.usedBy[userIdx].count += 1;
-                coupon.usedBy[userIdx].lastUsedAt = new Date();
-              } else {
-                coupon.usedBy.push({ user: req.user._id, count: 1, lastUsedAt: new Date() });
-              }
-            }
-            await coupon.save();
-          }
+      if (coupon.status !== 'published') {
+        return res.status(400).json({ success: false, message: `Coupon '${codeUpper}' is not active.` });
+      }
+
+      if (now > new Date(coupon.expiryDate)) {
+        return res.status(400).json({ success: false, message: `Coupon '${codeUpper}' has expired.` });
+      }
+
+      // Check total overall usage limit
+      if (coupon.usageLimit !== null && coupon.usageLimit !== undefined && coupon.usageCount >= coupon.usageLimit) {
+        return res.status(400).json({ success: false, message: `Total redemption limit for coupon '${codeUpper}' has been reached.` });
+      }
+
+      // Check per-user limit
+      if (req.user?._id) {
+        const userUsage = coupon.usedBy?.find(u => u.user && u.user.toString() === req.user._id.toString());
+        const timesUsed = userUsage ? userUsage.count : 0;
+        const userLimit = coupon.usageLimitPerUser !== null && coupon.usageLimitPerUser !== undefined ? coupon.usageLimitPerUser : 1;
+
+        if (timesUsed >= userLimit) {
+          return res.status(400).json({
+            success: false,
+            message: `You have already redeemed coupon '${coupon.code}' your maximum allowed limit of ${userLimit} time${userLimit > 1 ? 's' : ''}.`,
+          });
         }
       }
+
+      if (calculatedSubtotal < coupon.minCartValue) {
+        return res.status(400).json({
+          success: false,
+          message: `Cart total must reach ₹${coupon.minCartValue} to use coupon '${coupon.code}'.`,
+        });
+      }
+
+      // Authoritative discount calculation
+      if (coupon.discountType === 'percentage') {
+        calculatedDiscount = (calculatedSubtotal * coupon.discountValue) / 100;
+        if (coupon.maxDiscountCap && coupon.maxDiscountCap > 0) {
+          calculatedDiscount = Math.min(calculatedDiscount, coupon.maxDiscountCap);
+        }
+      } else if (coupon.discountType === 'flat') {
+        calculatedDiscount = coupon.discountValue;
+      }
+      calculatedDiscount = Math.min(calculatedDiscount, calculatedSubtotal);
+
+      appliedCouponCode = coupon.code;
+      couponToConsumeId = coupon._id;
     }
 
     const netSubtotal = Math.max(0, calculatedSubtotal - calculatedDiscount);
@@ -117,6 +141,35 @@ exports.createOrder = async (req, res, next) => {
       razorpayPaymentId: razorpayPaymentId || '',
       razorpaySignature: razorpaySignature || '',
     });
+
+    // Atomically consume/increment coupon usage AFTER successful order creation
+    if (couponToConsumeId && req.user?._id) {
+      const userId = req.user._id;
+      const incResult = await Coupon.findOneAndUpdate(
+        {
+          _id: couponToConsumeId,
+          'usedBy.user': userId,
+        },
+        {
+          $inc: { usageCount: 1, 'usedBy.$.count': 1 },
+          $set: { 'usedBy.$.lastUsedAt': new Date() },
+        },
+        { new: true }
+      );
+
+      if (!incResult) {
+        await Coupon.findOneAndUpdate(
+          {
+            _id: couponToConsumeId,
+          },
+          {
+            $inc: { usageCount: 1 },
+            $push: { usedBy: { user: userId, count: 1, lastUsedAt: new Date() } },
+          },
+          { new: true }
+        );
+      }
+    }
 
     // Auto-create initial PaymentReceipt
     const receiptNumber = `WAG-PAY-${new Date().getFullYear()}-${orderIdStr.replace('WAGH-', '')}`;

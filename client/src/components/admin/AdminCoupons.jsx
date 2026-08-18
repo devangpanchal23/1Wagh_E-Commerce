@@ -242,77 +242,82 @@ export function AdminCoupons() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredCoupons.map((coupon) => {
-                  const isExpired = new Date() > new Date(coupon.expiryDate);
-                  const isDraft = coupon.status === 'draft';
-                  const isPublished = coupon.status === 'published';
+                  {filteredCoupons.map((coupon) => {
+                    const isExpired = new Date() > new Date(coupon.expiryDate);
+                    const isLimitReached = coupon.usageLimit !== null && coupon.usageLimit !== undefined && coupon.usageCount >= coupon.usageLimit;
+                    const isDraft = coupon.status === 'draft';
+                    const isPublished = coupon.status === 'published';
 
-                  return (
-                    <tr key={coupon._id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-4 font-mono-tag font-bold text-slate-900">
-                        <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/80">
-                          {coupon.code}
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-4 font-bold text-slate-800">
-                        {coupon.discountType === 'percentage' ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-600">
-                            {coupon.discountValue}% OFF
+                    return (
+                      <tr key={coupon._id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-4 font-mono-tag font-bold text-slate-900">
+                          <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/80">
+                            {coupon.code}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-emerald-600">
-                            ₹{coupon.discountValue} FLAT
+                        </td>
+
+                        <td className="py-3 px-4 font-bold text-slate-800">
+                          {coupon.discountType === 'percentage' ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-600">
+                              {coupon.discountValue}% OFF
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-emerald-600">
+                              ₹{coupon.discountValue} FLAT
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-4 text-slate-700 font-mono-tag">
+                          ₹{(coupon.minCartValue || 0).toLocaleString('en-IN')}
+                        </td>
+
+                        <td className="py-3 px-4 text-slate-600 font-mono-tag">
+                          {coupon.maxDiscountCap ? `₹${coupon.maxDiscountCap.toLocaleString('en-IN')}` : '—'}
+                        </td>
+
+                        <td className="py-3 px-4 text-slate-700 font-medium">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-bold">
+                            <UserCheck className="w-3 h-3 text-blue-600" />
+                            {coupon.usageLimitPerUser || 1} / user
                           </span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="py-3 px-4 text-slate-700 font-mono-tag">
-                        ₹{(coupon.minCartValue || 0).toLocaleString('en-IN')}
-                      </td>
+                        <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
+                          {new Date(coupon.expiryDate).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
 
-                      <td className="py-3 px-4 text-slate-600 font-mono-tag">
-                        {coupon.maxDiscountCap ? `₹${coupon.maxDiscountCap.toLocaleString('en-IN')}` : '—'}
-                      </td>
+                        <td className="py-3 px-4 font-mono-tag text-slate-700">
+                          {coupon.usageCount || 0} / {coupon.usageLimit ? coupon.usageLimit : '∞'}
+                        </td>
 
-                      <td className="py-3 px-4 text-slate-700 font-medium">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-bold">
-                          <UserCheck className="w-3 h-3 text-blue-600" />
-                          {coupon.usageLimitPerUser || 1} / user
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
-                        {new Date(coupon.expiryDate).toLocaleDateString('en-IN', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                        {isExpired && (
-                          <span className="ml-1.5 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
-                            Expired
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-3 px-4 font-mono-tag text-slate-700">
-                        {coupon.usageCount || 0} / {coupon.usageLimit ? coupon.usageLimit : '∞'}
-                      </td>
-
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        {isDraft && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                            DRAFT
-                          </span>
-                        )}
-                        {isPublished && !isExpired && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            PUBLISHED
-                          </span>
-                        )}
-                      </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {isExpired ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                              EXPIRED
+                            </span>
+                          ) : isLimitReached ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              LIMIT REACHED
+                            </span>
+                          ) : isDraft ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                              DRAFT
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              PUBLISHED
+                            </span>
+                          )}
+                        </td>
 
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">

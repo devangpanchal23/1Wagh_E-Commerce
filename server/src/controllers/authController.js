@@ -174,6 +174,7 @@ exports.loginUser = async (req, res, next) => {
       user.refreshTokens.shift();
     }
     user.refreshTokens.push({ token: refreshToken, createdAt: new Date() });
+    user.lastLoginAt = new Date();
     await user.save();
 
     sendRefreshTokenCookie(res, refreshToken);
@@ -239,6 +240,7 @@ exports.refreshToken = async (req, res, next) => {
     const newRefreshToken = generateRefreshToken(user._id, user.role);
 
     user.refreshTokens[tokenIndex] = { token: newRefreshToken, createdAt: new Date() };
+    user.lastLoginAt = new Date();
     await user.save();
 
     sendRefreshTokenCookie(res, newRefreshToken);

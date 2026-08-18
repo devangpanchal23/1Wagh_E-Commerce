@@ -17,6 +17,7 @@ const {
   getAdminCategories,
   createAdminCategory,
   deleteAdminCategory,
+  getAdminUsers,
 } = require('../controllers/adminController');
 const { uploadProductImage, getMediaGallery } = require('../controllers/mediaController');
 const couponController = require('../controllers/couponController');
@@ -81,6 +82,8 @@ router.delete('/products/:id', deleteAdminProduct);
 router.get('/categories', getAdminCategories);
 router.post('/categories', createAdminCategory);
 router.delete('/categories/:id', deleteAdminCategory);
+
+router.get('/users', getAdminUsers);
 
 // Admin Coupon Management Routes (protected by verifyAdminToken)
 router.get('/coupons', couponController.getAllCoupons);

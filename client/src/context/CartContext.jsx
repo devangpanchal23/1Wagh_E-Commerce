@@ -134,8 +134,19 @@ export function CartProvider({ children }) {
     addToast('Item removed from cart', 'info');
   };
 
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+
+  const applyCouponState = (couponData) => {
+    setAppliedCoupon(couponData);
+  };
+
+  const removeCouponState = () => {
+    setAppliedCoupon(null);
+  };
+
   const clearCart = () => {
     setCartItems([]);
+    setAppliedCoupon(null);
     if (user?.uid) {
       localStorage.removeItem(`wagh_cart_${user.uid}`);
       saveUserCartToFirestore(user.uid, []);
@@ -154,7 +165,14 @@ export function CartProvider({ children }) {
 
   // Free shipping on orders over ₹499
   const shippingFee = subtotal >= 499 || subtotal === 0 ? 0 : 49;
-  const grandTotal = subtotal + shippingFee;
+  
+  // Calculate discount from applied coupon if minCartValue requirement is still met
+  let couponDiscount = 0;
+  if (appliedCoupon && subtotal >= (appliedCoupon.minCartValue || 0)) {
+    couponDiscount = appliedCoupon.discountAmount || 0;
+  }
+
+  const grandTotal = Math.max(0, subtotal - couponDiscount) + shippingFee;
 
   return (
     <CartContext.Provider
@@ -168,6 +186,10 @@ export function CartProvider({ children }) {
         subtotal,
         shippingFee,
         grandTotal,
+        appliedCoupon: subtotal >= (appliedCoupon?.minCartValue || 0) ? appliedCoupon : null,
+        couponDiscount: subtotal >= (appliedCoupon?.minCartValue || 0) ? couponDiscount : 0,
+        applyCouponState,
+        removeCouponState,
       }}
     >
       {children}

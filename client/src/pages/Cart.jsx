@@ -9,12 +9,21 @@ import { ProductImage } from '../components/ProductImage';
 import { fetchApi } from '../api';
 
 export function Cart() {
-  const { cartItems, updateQty, removeFromCart, clearCart, subtotal, shippingFee, grandTotal } = useCart();
+  const {
+    cartItems,
+    updateQty,
+    removeFromCart,
+    clearCart,
+    subtotal,
+    shippingFee,
+    grandTotal,
+    appliedCoupon,
+    couponDiscount,
+    applyCouponState,
+    removeCouponState,
+  } = useCart();
   const { user, getToken } = useAuth();
-  const [coupon, setCoupon] = useState('');
-  const [discount, setDiscount] = useState(0);
-  const [couponApplied, setCouponApplied] = useState(false);
-  const [appliedCouponData, setAppliedCouponData] = useState(null);
+  const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const { addToast } = useToast();
@@ -22,7 +31,7 @@ export function Cart() {
 
   const handleApplyCoupon = async (e) => {
     e.preventDefault();
-    if (!coupon.trim()) return;
+    if (!couponInput.trim()) return;
     setCouponError('');
     setApplyingCoupon(true);
 
@@ -36,7 +45,7 @@ export function Cart() {
       const res = await fetchApi('/coupons/apply', {
         method: 'POST',
         body: JSON.stringify({
-          couponCode: coupon.trim(),
+          couponCode: couponInput.trim(),
           items: formattedItems,
           cartTotal: subtotal,
         }),
@@ -44,15 +53,12 @@ export function Cart() {
       });
 
       if (res.success && res.data) {
-        setDiscount(res.data.discountAmount);
-        setAppliedCouponData(res.data);
-        setCouponApplied(true);
+        applyCouponState(res.data);
+        setCouponInput('');
         addToast(res.message || `Coupon '${res.data.couponCode}' applied!`, 'success');
       }
     } catch (err) {
-      setDiscount(0);
-      setAppliedCouponData(null);
-      setCouponApplied(false);
+      removeCouponState();
       setCouponError(err.message || 'Invalid coupon code');
       addToast(err.message || 'Failed to apply coupon', 'error');
     } finally {
@@ -60,7 +66,7 @@ export function Cart() {
     }
   };
 
-  const finalTotal = Math.max(0, grandTotal - discount);
+  const finalTotal = grandTotal;
 
   if (cartItems.length === 0) {
     return (
@@ -235,33 +241,42 @@ export function Cart() {
           </h3>
 
           {/* Coupon Code Input */}
-          <form onSubmit={handleApplyCoupon} className="flex gap-2">
-            <div className="relative flex-1">
-              <Tag className="w-4 h-4 text-wagh-muted absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Coupon (e.g. SAVE20)"
-                value={coupon}
-                onChange={(e) => {
-                  setCoupon(e.target.value);
-                  if (couponError) setCouponError('');
-                }}
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-wagh-border text-xs font-mono-tag uppercase focus:outline-none focus:ring-2 focus:ring-wagh-teal"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={applyingCoupon}
-              className="px-4 py-2 rounded-xl bg-wagh-dark text-white font-mono-tag text-xs font-bold hover:bg-wagh-teal transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
-            >
-              {applyingCoupon ? 'Checking...' : 'Apply'}
-            </button>
-          </form>
-
-          {couponApplied && appliedCouponData && (
-            <div className="text-xs font-mono-tag text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 flex items-center justify-between">
-              <span>✓ Code <strong>{appliedCouponData.couponCode}</strong> Applied</span>
-              <span className="font-bold text-emerald-700">-₹{appliedCouponData.discountAmount}</span>
+          {!appliedCoupon ? (
+            <form onSubmit={handleApplyCoupon} className="flex gap-2">
+              <div className="relative flex-1">
+                <Tag className="w-4 h-4 text-wagh-muted absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Coupon (e.g. SAVE20)"
+                  value={couponInput}
+                  onChange={(e) => {
+                    setCouponInput(e.target.value);
+                    if (couponError) setCouponError('');
+                  }}
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-wagh-border text-xs font-mono-tag uppercase focus:outline-none focus:ring-2 focus:ring-wagh-teal"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={applyingCoupon}
+                className="px-4 py-2 rounded-xl bg-wagh-dark text-white font-mono-tag text-xs font-bold hover:bg-wagh-teal transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+              >
+                {applyingCoupon ? 'Checking...' : 'Apply'}
+              </button>
+            </form>
+          ) : (
+            <div className="text-xs font-mono-tag text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex items-center justify-between">
+              <div>
+                <span className="font-bold text-emerald-900 block">✓ Code {appliedCoupon.couponCode} Applied</span>
+                <span className="text-[11px] text-emerald-700">You save ₹{appliedCoupon.discountAmount} on this order</span>
+              </div>
+              <button
+                type="button"
+                onClick={removeCouponState}
+                className="text-xs font-bold text-rose-600 hover:text-rose-800 underline ml-2 cursor-pointer"
+              >
+                Remove
+              </button>
             </div>
           )}
 
@@ -289,16 +304,16 @@ export function Cart() {
               </span>
             </div>
 
-            {discount > 0 && (
+            {couponDiscount > 0 && (
               <div className="flex justify-between text-wagh-success font-bold">
-                <span>Discount</span>
-                <span>-₹{discount}</span>
+                <span>Discount ({appliedCoupon?.couponCode})</span>
+                <span>-₹{couponDiscount}</span>
               </div>
             )}
 
             <div className="flex justify-between text-base font-extrabold text-wagh-teal border-t border-wagh-border pt-3">
               <span>Total</span>
-              <span>₹{finalTotal}</span>
+              <span>₹{grandTotal}</span>
             </div>
           </div>
 

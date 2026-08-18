@@ -9,7 +9,7 @@ import { ProductImage } from '../components/ProductImage';
 import { checkoutShippingAddressSchema, sanitizeText } from '../validations/profileSchema';
 
 export function Checkout() {
-  const { cartItems, subtotal, shippingFee, grandTotal, clearCart } = useCart();
+  const { cartItems, subtotal, shippingFee, grandTotal, clearCart, appliedCoupon, couponDiscount } = useCart();
   const { user } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -195,7 +195,8 @@ export function Checkout() {
         paymentMethod,
         subtotal,
         shippingFee,
-        discount: 0,
+        discount: couponDiscount || 0,
+        couponCode: appliedCoupon?.couponCode || '',
         total: grandTotal,
       };
 

@@ -13,6 +13,7 @@ import { AdminLoginForm } from '../components/AdminLoginForm';
 import { ImageCropModal } from '../components/admin/ImageCropModal';
 import { GoogleDrivePickerButton } from '../components/GoogleDrivePickerButton';
 import { AdminCoupons } from '../components/admin/AdminCoupons';
+import { AdminCustomers } from '../components/admin/AdminCustomers';
 import { Tag } from 'lucide-react';
 
 // Custom Order Status Dropdown Component
@@ -849,6 +850,16 @@ export function Admin() {
           </button>
 
           <button
+            onClick={() => setActiveTab('customers')}
+            className={`py-4 px-6 font-mono-tag text-xs font-bold uppercase transition-all flex items-center gap-2 ${
+              activeTab === 'customers' ? 'border-b-2 border-wagh-teal text-wagh-teal bg-white shadow-xs' : 'text-wagh-muted hover:text-wagh-dark'
+            }`}
+          >
+            <Users className="w-4 h-4 text-wagh-teal" />
+            <span>Customers ({stats.totalCustomers || 0})</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('coupons')}
             className={`py-4 px-6 font-mono-tag text-xs font-bold uppercase transition-all flex items-center gap-2 ${
               activeTab === 'coupons' ? 'border-b-2 border-wagh-teal text-wagh-teal bg-white shadow-xs' : 'text-wagh-muted hover:text-wagh-dark'
@@ -860,6 +871,7 @@ export function Admin() {
         </div>
 
         <div className="p-6">
+          {activeTab === 'customers' && <AdminCustomers />}
           {activeTab === 'coupons' && <AdminCoupons />}
           
           {/* TAB 1: ORDER TIMELINE & CATEGORIZED TRACKING VIEW */}

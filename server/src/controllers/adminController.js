@@ -432,3 +432,58 @@ exports.deleteAdminCategory = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get paginated, searchable, sortable list of customers for admin panel
+// @route   GET /api/v1/admin/users
+exports.getAdminUsers = async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 10));
+    const skip = (page - 1) * limit;
+
+    const { search, sort } = req.query;
+
+    const query = { role: { $ne: 'admin' } };
+
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { mobileNumber: searchRegex },
+      ];
+    }
+
+    let sortOptions = { createdAt: -1 }; // default: joined_desc
+    if (sort === 'joined_asc') {
+      sortOptions = { createdAt: 1 };
+    } else if (sort === 'name_asc') {
+      sortOptions = { name: 1 };
+    } else if (sort === 'name_desc') {
+      sortOptions = { name: -1 };
+    } else if (sort === 'last_login_desc') {
+      sortOptions = { lastLoginAt: -1 };
+    }
+
+    const total = await User.countDocuments(query);
+    const users = await User.find(query)
+      .select('-password -refreshTokens -emailOtpHash -phoneOtpHash')
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        users,
+        page,
+        pages: Math.ceil(total / limit) || 1,
+        total,
+      },
+      message: 'Users fetched successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};

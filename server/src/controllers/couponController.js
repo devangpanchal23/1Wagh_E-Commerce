@@ -141,6 +141,18 @@ exports.applyCoupon = async (req, res, next) => {
   }
 };
 
+// Helper to parse date and ensure date-only strings (e.g. "2026-08-20") cover through end-of-day (23:59:59.999Z)
+function parseExpiryDate(dateInput) {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date) return dateInput;
+
+  const str = String(dateInput).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return new Date(`${str}T23:59:59.999Z`);
+  }
+  return new Date(dateInput);
+}
+
 // Admin: Create new coupon (defaults to draft)
 exports.createCoupon = async (req, res, next) => {
   try {
@@ -168,13 +180,18 @@ exports.createCoupon = async (req, res, next) => {
       return res.status(400).json({ success: false, message: `Coupon with code '${codeUpper}' already exists.` });
     }
 
+    const parsedExpiry = parseExpiryDate(expiryDate);
+    if (!parsedExpiry || isNaN(parsedExpiry.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid expiry date format.' });
+    }
+
     const coupon = await Coupon.create({
       code: codeUpper,
       discountType,
       discountValue: Number(discountValue),
       minCartValue: Number(minCartValue || 0),
       maxDiscountCap: maxDiscountCap ? Number(maxDiscountCap) : null,
-      expiryDate: new Date(expiryDate),
+      expiryDate: parsedExpiry,
       usageLimit: usageLimit ? Number(usageLimit) : null,
       usageLimitPerUser: usageLimitPerUser ? Number(usageLimitPerUser) : 1,
       status: 'draft',
@@ -230,7 +247,13 @@ exports.updateCoupon = async (req, res, next) => {
     if (discountValue !== undefined) coupon.discountValue = Number(discountValue);
     if (minCartValue !== undefined) coupon.minCartValue = Number(minCartValue);
     if (maxDiscountCap !== undefined) coupon.maxDiscountCap = maxDiscountCap ? Number(maxDiscountCap) : null;
-    if (expiryDate) coupon.expiryDate = new Date(expiryDate);
+    if (expiryDate) {
+      const parsedExpiry = parseExpiryDate(expiryDate);
+      if (!parsedExpiry || isNaN(parsedExpiry.getTime())) {
+        return res.status(400).json({ success: false, message: 'Invalid expiry date format.' });
+      }
+      coupon.expiryDate = parsedExpiry;
+    }
     if (usageLimit !== undefined) coupon.usageLimit = usageLimit ? Number(usageLimit) : null;
     if (usageLimitPerUser !== undefined) coupon.usageLimitPerUser = Number(usageLimitPerUser) || 1;
 
