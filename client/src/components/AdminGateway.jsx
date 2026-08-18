@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth as useClerkAuth } from '@clerk/react';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Zap } from 'lucide-react';
 
 export function AdminGateway({ children }) {
-  const { isLoaded, isSignedIn } = useClerkAuth();
+  const { isLoaded, isSignedIn } = useAuth();
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -14,7 +14,6 @@ export function AdminGateway({ children }) {
     }
   }, [isLoaded, isSignedIn, addToast]);
 
-  // Neutral loading state while Clerk initializes
   if (!isLoaded) {
     return (
       <div className="min-h-[75vh] flex flex-col items-center justify-center p-6 space-y-4">
@@ -33,7 +32,6 @@ export function AdminGateway({ children }) {
     return <Navigate to="/" replace />;
   }
 
-  // Signed-out visitor: render Admin page normally
   return children;
 }
 

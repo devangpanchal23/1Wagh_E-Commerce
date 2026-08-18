@@ -64,22 +64,6 @@ export function GoogleDrivePickerButton({ onFileSelected, isActive, onClickTab, 
     return { clientId: '', apiKey: '' };
   };
 
-  // Try to inspect Clerk user if available
-  let clerkGoogleEmail = '';
-  try {
-    const clerk = window.Clerk;
-    if (clerk && clerk.user) {
-      const googleAccount = clerk.user.externalAccounts?.find(
-        (acc) => acc.provider === 'google' || acc.verification?.strategy === 'from_oauth_google'
-      );
-      if (googleAccount && googleAccount.emailAddress) {
-        clerkGoogleEmail = googleAccount.emailAddress;
-      }
-    }
-  } catch (err) {
-    // Clerk user optional
-  }
-
   // Check connection status from backend
   const checkStatus = useCallback(async () => {
     setCheckingStatus(true);
@@ -351,8 +335,6 @@ export function GoogleDrivePickerButton({ onFileSelected, isActive, onClickTab, 
             ? 'Processing...'
             : driveConnection.connected
             ? `Google Drive (${driveConnection.email || 'Connected'})`
-            : clerkGoogleEmail
-            ? `Use ${clerkGoogleEmail} for Drive`
             : 'Connect Google Drive'}
         </span>
       </button>

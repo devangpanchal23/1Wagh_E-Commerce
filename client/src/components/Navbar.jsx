@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, ShoppingBag, User, Heart, Menu, ShieldAlert } from 'lucide-react';
-import { Show, SignInButton, UserButton } from '@clerk/react';
+import { Search, ShoppingBag, User, Heart, Menu } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 
 export function Navbar({ onOpenSearch, onOpenMobileDrawer, onOpenAuthModal }) {
   const { totalItemCount } = useCart();
-  const { user, isAdmin } = useAuth();
+  const { user, isSignedIn } = useAuth();
   const { wishlist } = useWishlist();
   const location = useLocation();
   const navigate = useNavigate();
@@ -107,11 +106,11 @@ export function Navbar({ onOpenSearch, onOpenMobileDrawer, onOpenAuthModal }) {
             )}
           </Link>
 
-          {/* Profile / Sign In with Clerk Show pattern */}
-          <Show when="signed-out">
+          {/* Profile / Sign In button */}
+          {!isSignedIn ? (
             <button
               onClick={onOpenAuthModal}
-              className="p-2.5 rounded-full text-wagh-dark/80 hover:text-wagh-teal hover:bg-wagh-teal/10 transition-colors flex items-center gap-1"
+              className="p-2.5 rounded-full text-wagh-dark/80 hover:text-wagh-teal hover:bg-wagh-teal/10 transition-colors flex items-center gap-1 cursor-pointer"
               title="Sign In"
             >
               <User className="w-5 h-5" />
@@ -119,19 +118,18 @@ export function Navbar({ onOpenSearch, onOpenMobileDrawer, onOpenAuthModal }) {
                 Sign In
               </span>
             </button>
-          </Show>
-
-          <Show when="signed-in">
-            <UserButton afterSignOutUrl="/">
-              <UserButton.MenuItems>
-                <UserButton.Action
-                  label="My Profile & Orders"
-                  labelIcon={<User className="w-4 h-4" />}
-                  onClick={() => navigate('/profile')}
-                />
-              </UserButton.MenuItems>
-            </UserButton>
-          </Show>
+          ) : (
+            <Link
+              to="/profile"
+              className="p-2.5 rounded-full text-wagh-teal bg-teal-50 hover:bg-teal-100 transition-colors flex items-center gap-1.5 border border-teal-200"
+              title="My Account & Profile"
+            >
+              <User className="w-5 h-5 text-wagh-teal" />
+              <span className="hidden md:inline text-xs font-bold text-wagh-teal max-w-[100px] truncate">
+                {user?.displayName || user?.name || 'Account'}
+              </span>
+            </Link>
+          )}
 
           {/* Cart Icon with Live Badge */}
           <Link

@@ -38,15 +38,21 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  refreshTokens: [
+    {
+      token: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
   password: {
     type: String,
     required: [true, 'Password is required'],
     minlength: 6,
     select: false,
-  },
-  clerkId: {
-    type: String,
-    default: '',
   },
   role: {
     type: String,
@@ -118,10 +124,6 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true,
 });
-
-// `email` is already indexed by its `unique: true` declaration — redeclaring it
-// here would build a duplicate index and trigger a Mongoose warning on boot.
-userSchema.index({ clerkId: 1 }, { sparse: true });
 
 // Admin dashboard customer count
 userSchema.index({ role: 1 });

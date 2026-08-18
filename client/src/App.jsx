@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { ClerkProvider } from '@clerk/react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import AnnouncementBar from './components/AnnouncementBar';
 import { Navbar } from './components/Navbar';
 import { SearchOverlay } from './components/SearchOverlay';
@@ -25,6 +24,9 @@ import PaymentReceipt from './pages/PaymentReceipt';
 import PurchaseInvoice from './pages/PurchaseInvoice';
 import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
+import VerifyOtpPage from './pages/VerifyOtpPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotFound from './pages/NotFound';
 
 // Context Providers
@@ -45,7 +47,7 @@ function EmailVerificationBanner() {
       <span>Please verify your email address ({user.email}).</span>
       <button
         onClick={resendEmailVerification}
-        className="underline hover:text-amber-100 font-bold ml-1 transition-colors"
+        className="underline hover:text-amber-100 font-bold ml-1 transition-colors cursor-pointer"
       >
         Resend Verification Link
       </button>
@@ -125,8 +127,13 @@ function MainAppLayout() {
               </ProtectedRoute>
             }
           />
+          <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/sign-in/*" element={<SignInPage />} />
+          <Route path="/sign-up" element={<SignUpPage />} />
           <Route path="/sign-up/*" element={<SignUpPage />} />
+          <Route path="/verify-otp" element={<VerifyOtpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/login" element={<Navigate to="/sign-in" replace />} />
           <Route
             path="/admin"
@@ -146,41 +153,18 @@ function MainAppLayout() {
   );
 }
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZGFzaGluZy1tdWxlLTQuY2xlcmsuYWNjb3VudHMuZGV2JA==';
-
-function ClerkProviderWithRoutes({ children }) {
-  const navigate = useNavigate();
-
-  return (
-    <ClerkProvider
-      publishableKey={PUBLISHABLE_KEY}
-      routerPush={(to) => navigate(to)}
-      routerReplace={(to) => navigate(to, { replace: true })}
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/"
-      signUpFallbackRedirectUrl="/"
-      afterSignOutUrl="/"
-    >
-      {children}
-    </ClerkProvider>
-  );
-}
-
 export default function App() {
   return (
-    <ClerkProviderWithRoutes>
-      <ToastProvider>
-        <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <ErrorBoundary>
-                <MainAppLayout />
-              </ErrorBoundary>
-            </WishlistProvider>
-          </CartProvider>
-        </AuthProvider>
-      </ToastProvider>
-    </ClerkProviderWithRoutes>
+    <ToastProvider>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <ErrorBoundary>
+              <MainAppLayout />
+            </ErrorBoundary>
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 }

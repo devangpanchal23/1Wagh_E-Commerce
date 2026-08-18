@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@clerk/react": "^6.12.9",
     "firebase": "^12.16.0",
     "lucide-react": "^0.380.0",
     "react": "^18.3.1",

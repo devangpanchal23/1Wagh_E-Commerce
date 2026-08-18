@@ -12,9 +12,9 @@ export function CartProvider({ children }) {
 
   const [cartItems, setCartItems] = useState(() => {
     try {
-      const uid = localStorage.getItem('wagh_clerk_uid');
-      if (uid) {
-        const userSaved = localStorage.getItem(`wagh_cart_${uid}`);
+      if (user?.uid || user?._id) {
+        const userId = user.uid || user._id;
+        const userSaved = localStorage.getItem(`wagh_cart_${userId}`);
         if (userSaved) return JSON.parse(userSaved);
       }
       const guestSaved = localStorage.getItem('wagh_guest_cart');

@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useUser, useClerk, useAuth as useClerkAuth } from '@clerk/react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from './ToastContext';
-import { fetchApi } from '../api';
+import { fetchApi, setAccessToken, getAccessToken } from '../api';
 
 const AuthContext = createContext();
 
@@ -14,195 +13,172 @@ const normalizeBirthdate = (value) => {
   return parsed.toISOString().slice(0, 10);
 };
 
-const mapMongoProfile = (baseProfile, data = {}) => ({
-  ...baseProfile,
-  email: data.email || baseProfile.email,
-  emailVerified: data.emailVerified !== undefined ? !!data.emailVerified : (baseProfile.emailVerified || false),
-  emailVerifiedAt: data.emailVerifiedAt || null,
-  displayName: data.name || baseProfile.displayName,
-  name: data.name || baseProfile.displayName,
-  phone: data.mobileNumber || data.phone || '',
-  phoneNumber: data.mobileNumber || data.phone || '',
-  mobileNumber: data.mobileNumber || data.phone || '',
-  phoneVerified: data.phoneVerified !== undefined ? !!data.phoneVerified : (baseProfile.phoneVerified || false),
-  birthdate: normalizeBirthdate(data.birthdate),
-  age: data.age !== undefined && data.age !== null ? data.age : null,
-  gender: data.gender || 'prefer_not_to_say',
-  addresses: Array.isArray(data.addresses) ? data.addresses : [],
-  profileLoaded: true,
-});
-
 export function AuthProvider({ children }) {
-  const { isLoaded, isSignedIn, user: clerkUser } = useUser();
-  const { signOut: clerkSignOut, openSignIn, openSignUp } = useClerk();
-  const { getToken } = useClerkAuth();
-  const { addToast } = useToast();
-  // Backend enrichment only — never the source of truth for "is this user signed
-  // in". Keyed by uid so a late response for a previous account can never bleed
-  // into the next one.
-  const [mongoProfile, setMongoProfile] = useState(null);
+  const [user, setUser] = useState(null);
+  const [accessTokenState, setAccessTokenState] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState(null);
-  const profileRequestRef = useRef(0);
-  const loadedUidRef = useRef(null);
+  const { addToast } = useToast();
 
-  const buildBaseProfile = useCallback((clerk) => {
-    const email = clerk.primaryEmailAddress?.emailAddress || '';
-    const displayName =
-      clerk.fullName ||
-      clerk.firstName ||
-      clerk.username ||
-      email.split('@')[0] ||
-      'WAGH Customer';
-
-    return {
-      uid: clerk.id,
-      id: clerk.id,
-      clerkId: clerk.id,
-      email,
-      displayName,
-      phoneNumber: clerk.primaryPhoneNumber?.phoneNumber || '',
-      photoURL: clerk.imageUrl || '',
-      emailVerified: clerk.primaryEmailAddress?.verification?.status === 'verified',
-      role: 'customer',
-      profileLoaded: false,
-    };
+  const updateTokenState = useCallback((token) => {
+    setAccessToken(token);
+    setAccessTokenState(token);
   }, []);
 
-  // Identity comes straight from Clerk, so `user` is populated on the very first
-  // render after Clerk resolves the session. Deriving it from the /auth/profile
-  // round-trip instead is what used to leave `user` null for a render and bounce
-  // freshly signed-in customers straight back out of every protected page.
-  const userProfile = useMemo(() => {
-    if (!isLoaded || !isSignedIn || !clerkUser) return null;
-    const base = buildBaseProfile(clerkUser);
-    if (mongoProfile && mongoProfile.uid === clerkUser.id) {
-      return mapMongoProfile(base, mongoProfile.data);
-    }
-    return base;
-  }, [isLoaded, isSignedIn, clerkUser, buildBaseProfile, mongoProfile]);
-
-  const patchMongoProfile = useCallback((patch) => {
-    setMongoProfile((prev) => (prev ? { ...prev, data: { ...prev.data, ...patch } } : prev));
-  }, []);
-
-  const loadMongoProfile = useCallback(
-    async (requestId) => {
-      const res = await fetchApi('/auth/profile', { getToken });
-      if (requestId !== profileRequestRef.current) return null;
-      // A failed lookup still resolves the profile — the customer stays signed in
-      // on their Clerk identity rather than being locked out by a backend blip.
-      return res?.success && res.data ? res.data : {};
-    },
-    [getToken]
-  );
-
-  const refreshProfile = useCallback(async () => {
-    if (!clerkUser) return { success: false };
-    const baseProfile = buildBaseProfile(clerkUser);
-    const requestId = ++profileRequestRef.current;
-
-    localStorage.setItem('wagh_clerk_uid', baseProfile.uid);
-    localStorage.setItem('wagh_clerk_email', baseProfile.email);
-    localStorage.setItem('wagh_clerk_name', baseProfile.displayName);
-
-    try {
-      const data = await loadMongoProfile(requestId);
-      if (data && requestId === profileRequestRef.current) {
-        setMongoProfile({ uid: clerkUser.id, data });
-        setProfileError(null);
-        loadedUidRef.current = baseProfile.uid;
-      }
-      return { success: true, data };
-    } catch (err) {
-      if (requestId === profileRequestRef.current) {
-        setProfileError(err.message || 'Failed to load your profile data.');
-      }
-      return { success: false, message: err.message };
-    }
-  }, [clerkUser, buildBaseProfile, loadMongoProfile]);
-
+  // Silent session refresh on mount using httpOnly cookie
   useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!isSignedIn || !clerkUser) {
-      profileRequestRef.current += 1;
-      loadedUidRef.current = null;
-      setMongoProfile(null);
-      setProfileLoading(false);
-      setProfileError(null);
-      localStorage.removeItem('wagh_token');
-      localStorage.removeItem('wagh_clerk_uid');
-      localStorage.removeItem('wagh_clerk_email');
-      localStorage.removeItem('wagh_clerk_name');
-      return;
-    }
-
-    const uid = clerkUser.id;
-    const baseProfile = buildBaseProfile(clerkUser);
-    const requestId = ++profileRequestRef.current;
-
-    localStorage.setItem('wagh_clerk_uid', uid);
-    localStorage.setItem('wagh_clerk_email', baseProfile.email);
-    localStorage.setItem('wagh_clerk_name', baseProfile.displayName);
-
-    setProfileLoading(true);
-    setProfileError(null);
-
+    let isMounted = true;
     (async () => {
       try {
-        const token = await getToken();
-        if (token && requestId === profileRequestRef.current) {
-          localStorage.setItem('wagh_token', token);
+        const res = await fetchApi('/auth/refresh', { method: 'POST' });
+        if (isMounted && res && res.success && res.accessToken) {
+          updateTokenState(res.accessToken);
+          setUser(res.user);
         }
-
-        const data = await loadMongoProfile(requestId);
-        if (data && requestId === profileRequestRef.current) {
-          setMongoProfile({ uid, data });
-          loadedUidRef.current = uid;
-        }
-      } catch (err) {
-        console.warn('Backend user profile fetch notice:', err.message);
-        if (requestId === profileRequestRef.current) {
-          setProfileError(err.message || 'Failed to load your profile data.');
+      } catch (_) {
+        if (isMounted) {
+          updateTokenState(null);
+          setUser(null);
         }
       } finally {
-        if (requestId === profileRequestRef.current) {
-          setProfileLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
         }
       }
     })();
-  }, [isLoaded, isSignedIn, clerkUser?.id, buildBaseProfile, getToken, loadMongoProfile]);
+    return () => {
+      isMounted = false;
+    };
+  }, [updateTokenState]);
 
-  const logout = async () => {
+  const login = async (email, password) => {
     try {
-      await clerkSignOut();
-      localStorage.removeItem('wagh_token');
-      localStorage.removeItem('wagh_clerk_uid');
-      localStorage.removeItem('wagh_clerk_email');
-      localStorage.removeItem('wagh_clerk_name');
-      loadedUidRef.current = null;
-      setMongoProfile(null);
-      addToast('Logged out successfully', 'info');
+      const res = await fetchApi('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (res && res.success && res.accessToken) {
+        updateTokenState(res.accessToken);
+        setUser(res.user);
+        addToast('Logged in successfully!', 'success');
+        return { success: true, user: res.user };
+      }
+      return { success: false, message: res?.message || 'Login failed' };
     } catch (err) {
-      addToast('Error logging out', 'error');
+      addToast(err.message || 'Invalid credentials', 'error');
+      return { success: false, message: err.message };
     }
   };
 
-  const updateUserProfile = async (updatedData) => {
-    if (!clerkUser) return { success: false, message: 'Not authenticated' };
+  const register = async (name, email, password) => {
     try {
-      if (updatedData.displayName || updatedData.name) {
-        const nameStr = updatedData.displayName || updatedData.name;
-        const parts = nameStr.trim().split(' ');
-        const firstName = parts[0] || '';
-        const lastName = parts.slice(1).join(' ') || '';
-        await clerkUser.update({ firstName, lastName }).catch(() => {});
-      }
+      const res = await fetchApi('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, password }),
+      });
 
+      if (res && res.success) {
+        addToast(res.message || 'Registration successful! Please check your email for the OTP.', 'success');
+        return { success: true, email: res.email, devOtp: res.devOtp };
+      }
+      return { success: false, message: res?.message || 'Registration failed' };
+    } catch (err) {
+      addToast(err.message || 'Registration failed', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const verifyOtp = async (email, otp) => {
+    try {
+      const res = await fetchApi('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email, otp }),
+      });
+
+      if (res && res.success) {
+        addToast(res.message || 'Email verified successfully! You can now log in.', 'success');
+        return { success: true };
+      }
+      return { success: false, message: res?.message || 'OTP verification failed' };
+    } catch (err) {
+      addToast(err.message || 'Verification failed', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const forgotPassword = async (email) => {
+    try {
+      const res = await fetchApi('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+
+      if (res && res.success) {
+        addToast(res.message || 'Password reset OTP sent to your email.', 'success');
+        return { success: true, devOtp: res.devOtp };
+      }
+      return { success: false, message: res?.message || 'Failed to send reset code' };
+    } catch (err) {
+      addToast(err.message || 'Request failed', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const resetPassword = async (email, otp, newPassword) => {
+    try {
+      const res = await fetchApi('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ email, otp, newPassword }),
+      });
+
+      if (res && res.success) {
+        addToast('Password reset successful! You can now log in.', 'success');
+        return { success: true };
+      }
+      return { success: false, message: res?.message || 'Failed to reset password' };
+    } catch (err) {
+      addToast(err.message || 'Password reset failed', 'error');
+      return { success: false, message: err.message };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await fetchApi('/auth/logout', { method: 'POST' }).catch(() => {});
+      updateTokenState(null);
+      setUser(null);
+      addToast('Logged out successfully', 'info');
+    } catch (err) {
+      updateTokenState(null);
+      setUser(null);
+    }
+  };
+
+  const refreshProfile = useCallback(async () => {
+    if (!getAccessToken()) return { success: false };
+    setProfileLoading(true);
+    try {
+      const res = await fetchApi('/auth/profile');
+      if (res && res.success && res.data) {
+        setUser((prev) => ({ ...prev, ...res.data }));
+        setProfileError(null);
+        return { success: true, data: res.data };
+      }
+      return { success: false };
+    } catch (err) {
+      setProfileError(err.message);
+      return { success: false, message: err.message };
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  const updateUserProfile = async (updatedData) => {
+    try {
       const res = await fetchApi('/auth/profile', {
         method: 'PUT',
-        getToken,
         body: JSON.stringify({
           name: updatedData.displayName || updatedData.name,
           email: updatedData.email,
@@ -211,50 +187,25 @@ export function AuthProvider({ children }) {
           age: updatedData.age,
           gender: updatedData.gender,
           addresses: updatedData.addresses,
-          profileImageUrl: updatedData.profileImageUrl,
         }),
       });
 
       if (res && res.success && res.data) {
-        setMongoProfile({ uid: clerkUser.id, data: res.data });
+        setUser((prev) => ({ ...prev, ...res.data }));
+        addToast('Profile updated successfully!', 'success');
+        return { success: true, data: res.data };
       }
-
-      return { success: true, data: res?.data };
+      return { success: false, message: res?.message || 'Failed to update profile' };
     } catch (err) {
+      addToast(err.message || 'Update failed', 'error');
       return { success: false, message: err.message };
     }
-  };
-
-  const loginWithEmail = () => {
-    openSignIn();
-    return Promise.resolve({ success: true });
-  };
-
-  const registerWithEmail = () => {
-    openSignUp();
-    return Promise.resolve({ success: true });
-  };
-
-  const loginWithGoogle = () => {
-    openSignIn();
-    return Promise.resolve({ success: true });
-  };
-
-  const loginWithMicrosoft = () => {
-    openSignIn();
-    return Promise.resolve({ success: true });
-  };
-
-  const loginWithApple = () => {
-    openSignIn();
-    return Promise.resolve({ success: true });
   };
 
   const sendPhoneOtp = async (phoneNum) => {
     try {
       const res = await fetchApi('/auth/phone/send-otp', {
         method: 'POST',
-        getToken,
         body: JSON.stringify({ phone: phoneNum }),
       });
       return res;
@@ -267,14 +218,10 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetchApi('/auth/phone/verify-otp', {
         method: 'POST',
-        getToken,
         body: JSON.stringify({ otp: otpCode }),
       });
       if (res && res.success) {
-        patchMongoProfile({
-          phoneVerified: true,
-          ...(res.data?.mobileNumber ? { mobileNumber: res.data.mobileNumber } : {}),
-        });
+        setUser((prev) => prev ? { ...prev, phoneVerified: true, mobileNumber: res.data?.mobileNumber || prev.mobileNumber } : prev);
       }
       return res;
     } catch (err) {
@@ -286,7 +233,6 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetchApi('/auth/email/send-otp', {
         method: 'POST',
-        getToken,
         body: JSON.stringify({ email: targetEmail }),
       });
       return res;
@@ -299,14 +245,10 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetchApi('/auth/email/verify-otp', {
         method: 'POST',
-        getToken,
         body: JSON.stringify({ otp: otpCode }),
       });
       if (res && res.success) {
-        patchMongoProfile({
-          emailVerified: true,
-          emailVerifiedAt: res.data?.emailVerifiedAt || new Date().toISOString(),
-        });
+        setUser((prev) => prev ? { ...prev, emailVerified: true, isVerified: true } : prev);
       }
       return res;
     } catch (err) {
@@ -314,42 +256,58 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const resendEmailVerification = () => {
-    addToast('Verification email can be managed through Clerk account settings.', 'info');
+  const resendEmailVerification = async () => {
+    if (!user?.email) return;
+    try {
+      const res = await sendEmailOtp(user.email);
+      if (res?.success) {
+        addToast(`Verification code sent to ${user.email}`, 'info');
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to resend code', 'error');
+    }
   };
+
+  const userProfile = user
+    ? {
+        ...user,
+        uid: user._id,
+        id: user._id,
+        displayName: user.name,
+        phoneNumber: user.mobileNumber || '',
+        phone: user.mobileNumber || '',
+        birthdate: normalizeBirthdate(user.birthdate),
+        emailVerified: !!(user.emailVerified || user.isVerified),
+      }
+    : null;
 
   return (
     <AuthContext.Provider
       value={{
         user: userProfile,
         role: userProfile?.role || 'customer',
-        // Clerk owns the answer to "is this person signed in". Route guards must
-        // read these two and never the backend profile, which loads afterwards.
-        isLoaded,
-        isSignedIn: !!isSignedIn,
-        isAuthenticated: !!isSignedIn,
+        isLoaded: !isLoading,
+        isSignedIn: !!userProfile,
+        isAuthenticated: !!userProfile,
         isAdmin: userProfile?.role === 'admin',
-        loading: !isLoaded,
+        loading: isLoading,
         profileLoading,
         profileError,
+        accessToken: accessTokenState,
+        login,
+        register,
+        verifyOtp,
+        forgotPassword,
+        resetPassword,
+        logout,
         refreshProfile,
-        loginWithEmail,
-        registerWithEmail,
-        loginWithGoogle,
-        loginWithMicrosoft,
-        loginWithApple,
+        updateUserProfile,
+        updateProfile: updateUserProfile,
         sendPhoneOtp,
         verifyPhoneOtp,
         sendEmailOtp,
         verifyEmailOtp,
-        logout,
         resendEmailVerification,
-        updateUserProfile,
-        login: loginWithEmail,
-        register: registerWithEmail,
-        updateProfile: updateUserProfile,
-        getToken,
-        clerkUser,
       }}
     >
       {children}

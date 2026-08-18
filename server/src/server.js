@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
@@ -48,6 +49,9 @@ app.use(helmet({ crossOriginResourcePolicy: false }));
 // Gzip every JSON response above 1KB. Product listings are image-URL heavy and
 // compress by roughly 70-85%, which is the single biggest win on slow networks.
 app.use(compression({ threshold: 1024 }));
+
+// Cookie parser for reading httpOnly refresh tokens
+app.use(cookieParser());
 
 // CORS configuration
 const allowedOrigins = process.env.CLIENT_URL

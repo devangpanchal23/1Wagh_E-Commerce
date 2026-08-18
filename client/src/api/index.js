@@ -1,58 +1,63 @@
 const BASE_URL = import.meta.env.VITE_API_URL || '';
 const API_BASE = `${BASE_URL.replace(/\/$/, '')}/api/v1`;
 
-async function resolveAuthHeaders(options = {}) {
-  const headers = { ...options.headers };
+let inMemoryAccessToken = null;
 
-  if (typeof options.getToken === 'function') {
-    try {
-      const freshToken = await options.getToken();
-      if (freshToken) {
-        localStorage.setItem('wagh_token', freshToken);
-        headers.Authorization = `Bearer ${freshToken}`;
-      }
-    } catch (_) {
-      // Fall back to stored token below
-    }
-  }
-
-  if (!headers.Authorization) {
-    const token = localStorage.getItem('wagh_token');
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
-
-  const clerkUid = localStorage.getItem('wagh_clerk_uid');
-  const clerkEmail = localStorage.getItem('wagh_clerk_email');
-  const clerkName = localStorage.getItem('wagh_clerk_name');
-
-  if (clerkUid) {
-    headers['x-user-uid'] = clerkUid;
-    headers['x-clerk-user-id'] = clerkUid;
-  }
-  if (clerkEmail) headers['x-user-email'] = clerkEmail;
-  if (clerkName) headers['x-user-name'] = clerkName;
-
-  return headers;
+export function setAccessToken(token) {
+  inMemoryAccessToken = token;
 }
 
-// Customer API fetch helper — completely isolated from admin session/headers
+export function getAccessToken() {
+  return inMemoryAccessToken;
+}
+
+// Customer API fetch helper — sends httpOnly cookies & handles access token refresh
 export async function fetchApi(endpoint, options = {}) {
-  const { getToken, headers: _ignored, ...fetchOptions } = options;
-  const headers = await resolveAuthHeaders({ getToken, headers: options.headers });
+  const { headers: customHeaders, _isRetry, ...fetchOptions } = options;
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(inMemoryAccessToken ? { Authorization: `Bearer ${inMemoryAccessToken}` } : {}),
+    ...customHeaders,
+  };
 
   try {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       ...fetchOptions,
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
+      credentials: 'include', // Includes httpOnly refreshToken cookie
+      headers,
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+
     if (!res.ok) {
+      // Handle TOKEN_EXPIRED by triggering silent refresh and retrying once
+      if (res.status === 401 && data.code === 'TOKEN_EXPIRED' && !_isRetry && endpoint !== '/auth/refresh') {
+        try {
+          const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+          });
+
+          const refreshData = await refreshRes.json().catch(() => ({}));
+
+          if (refreshRes.ok && refreshData.success && refreshData.accessToken) {
+            setAccessToken(refreshData.accessToken);
+            // Retry original request once
+            return await fetchApi(endpoint, {
+              ...options,
+              _isRetry: true,
+            });
+          }
+        } catch (_) {
+          setAccessToken(null);
+        }
+      }
+
       throw new Error(data.message || 'Something went wrong');
     }
+
     return data;
   } catch (err) {
     console.warn(`API Error [${endpoint}]:`, err.message);
@@ -77,7 +82,7 @@ export async function fetchAdminApi(endpoint, options = {}) {
       headers,
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       if (res.status === 401) {
         localStorage.removeItem('wagh_admin_token');
