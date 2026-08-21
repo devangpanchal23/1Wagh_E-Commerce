@@ -2,9 +2,10 @@
 node_modules/
 
 # Environment variables
-
-
-
+.env
+.env.*
+!.env.example
+!*/.env.example
 
 # Build & OS output
 dist/
