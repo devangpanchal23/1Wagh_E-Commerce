@@ -81,7 +81,11 @@ export function Shop() {
 
   const updateFilters = (newParams) => {
     const current = Object.fromEntries(searchParams.entries());
-    const updated = { ...current, ...newParams, page: '1' };
+    const updated = { ...current, ...newParams };
+
+    // Changing a filter sends you back to page 1, but paging is itself a filter
+    // change here — so only reset when the caller isn't setting the page.
+    if (!('page' in newParams)) updated.page = '1';
     
     // Remove empty parameters
     Object.keys(updated).forEach((key) => {
