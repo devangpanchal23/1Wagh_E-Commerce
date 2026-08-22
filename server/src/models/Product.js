@@ -47,7 +47,7 @@ const productSchema = new mongoose.Schema({
     size: { type: String, default: '' },
     height: { type: String, default: '' },
     width: { type: String, default: '' },
-    warranty: { type: String, default: '24 Months' },
+    warranty: { type: String, default: '6 Months' },
     color: { type: String, default: 'Deep Teal' },
     material: { type: String, default: '' },
   },

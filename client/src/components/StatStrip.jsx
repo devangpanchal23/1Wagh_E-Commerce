@@ -23,7 +23,7 @@ export function StatStrip() {
     },
     {
       icon: Award,
-      number: '24 Mo',
+      number: '6 Mo',
       label: 'Hassle-Free Warranty',
       sublabel: 'Doorstep replacement policy',
     },

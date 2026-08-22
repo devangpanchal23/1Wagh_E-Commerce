@@ -76,7 +76,7 @@ export function Home() {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-wagh-success" />
-                <span>24 Months Doorstep Warranty</span>
+                <span>6 Months Doorstep Warranty</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-wagh-success" />

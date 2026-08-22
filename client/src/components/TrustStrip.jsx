@@ -4,7 +4,7 @@ import { Star, ShieldCheck, ShoppingBag, Clock } from 'lucide-react';
 export function TrustStrip() {
   const trustPoints = [
     { icon: Star, text: '4.9★ Average Rating' },
-    { icon: ShieldCheck, text: '24 Mo Replacement Warranty' },
+    { icon: ShieldCheck, text: '6 Mo Replacement Warranty' },
     { icon: ShoppingBag, text: '1.2M+ Orders Fulfilled' },
     { icon: Clock, text: '48 Hr Express Dispatch' },
   ];

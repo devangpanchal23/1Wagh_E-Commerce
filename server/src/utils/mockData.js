@@ -85,7 +85,7 @@ const mockProducts = [
       outputPower: '45W Max PPS / PD 3.0',
       compatibility: 'Universal (Samsung SFC 2.0, iPhone 15/14, iPad, Mac, Pixel)',
       cableLength: '1.2m Braided Type-C Included',
-      warranty: '24 Months Replacement Warranty',
+      warranty: '6 Months Replacement Warranty',
       color: 'Premium Deep Teal & Matte Gold',
       material: 'Fireproof PC + Anodized Aluminum Rim'
     },
@@ -115,7 +115,7 @@ const mockProducts = [
     specs: {
       outputPower: '65W Total (USB-C 65W + USB-A 18W)',
       compatibility: 'MacBook Air/Pro, iPhone, Android, Steam Deck',
-      warranty: '24 Months Warranty',
+      warranty: '6 Months Warranty',
       color: 'Stealth Black',
       material: 'Gallium Nitride III Semiconductor'
     },
@@ -145,7 +145,7 @@ const mockProducts = [
     specs: {
       outputPower: '22.5W Fast Charge / 20W PD Type-C',
       compatibility: 'Universal USB-A & USB-C Devices',
-      warranty: '12 Months Warranty',
+      warranty: '6 Months Warranty',
       color: 'Deep Teal Metal Finish',
       material: 'Textured Anti-scratch ABS Alloy'
     },
@@ -175,7 +175,7 @@ const mockProducts = [
     specs: {
       outputPower: '15W MagSafe Wireless / 20W Type-C PD',
       compatibility: 'iPhone 12/13/14/15/16 Series & Qi Android',
-      warranty: '12 Months Warranty',
+      warranty: '6 Months Warranty',
       color: 'Titanium Grey & Deep Teal',
       material: 'Soft-Touch Matte Silicone & Aluminum Stand'
     },
@@ -206,7 +206,7 @@ const mockProducts = [
       outputPower: '100W 5A Max Power Delivery',
       cableLength: '1.5 Meters (5 Feet)',
       compatibility: 'Type-C Laptops, Tablets, Smartphones',
-      warranty: '24 Months Replacement Warranty',
+      warranty: '6 Months Replacement Warranty',
       color: 'Deep Teal Braided Weave',
       material: 'Kevlar Reinforced Nylon Fiber'
     },
@@ -237,7 +237,7 @@ const mockProducts = [
       outputPower: '27W Max iPhone PD Fast Charge',
       cableLength: '1.2 Meters',
       compatibility: 'iPhone 14/13/12/11, iPad, AirPods',
-      warranty: '24 Months Warranty',
+      warranty: '6 Months Warranty',
       color: 'Off-White & Amber Gold Connectors',
       material: 'Braided Nylon + Zinc Alloy Shell'
     },
@@ -268,7 +268,7 @@ const mockProducts = [
       outputPower: '32dB Hybrid ANC + ENC Quad Mic',
       compatibility: 'Bluetooth 5.3 Universal (iOS & Android)',
       batteryLife: '40 Hours Total with Charging Case',
-      warranty: '12 Months Replacement Warranty',
+      warranty: '6 Months Replacement Warranty',
       color: 'Teal Green Glass Metallic Case',
       material: 'Ergonomic IPX5 Sweatproof Silicone'
     },
@@ -299,7 +299,7 @@ const mockProducts = [
       outputPower: '13mm Titanium Drivers / ENC',
       batteryLife: '30 Hours Playback / ASAP Fast Charge',
       compatibility: 'Bluetooth v5.2 Dual Pairing',
-      warranty: '12 Months Warranty',
+      warranty: '6 Months Warranty',
       color: 'Matte Teal & Midnight Black',
       material: 'Liquid Silicone Neckband'
     },
@@ -329,7 +329,7 @@ const mockProducts = [
     specs: {
       outputPower: '15W Phone + 5W AirPods + 3W Watch',
       compatibility: 'Qi-enabled phones, Apple Watch, AirPods',
-      warranty: '12 Months Warranty',
+      warranty: '6 Months Warranty',
       color: 'Metallic Teal & Frosted Glass',
       material: 'CNC Aluminum Base + Soft Rubber Pads'
     },
@@ -359,7 +359,7 @@ const mockProducts = [
     specs: {
       outputPower: '100W Max Total (2x USB-C + 2x USB-A)',
       compatibility: 'MacBook Pro, Windows Laptops, iPad, iPhone, Galaxy',
-      warranty: '24 Months Replacement Warranty',
+      warranty: '6 Months Replacement Warranty',
       color: 'Cyber Matte Black & Gold',
       material: 'Fireproof ABS + Anodized Alloy Rim'
     },
@@ -390,7 +390,7 @@ const mockProducts = [
       outputPower: '40mm Hi-Res Drivers / 45dB Hybrid ANC',
       batteryLife: '60 Hours Playtime (ANC Off) / 45 Hours (ANC On)',
       compatibility: 'Bluetooth 5.3 + 3.5mm Wired Aux',
-      warranty: '24 Months Warranty',
+      warranty: '6 Months Warranty',
       color: 'Midnight Black & Deep Teal Accents',
       material: 'Memory Foam Earcups & Aluminum Headband'
     },
@@ -420,7 +420,7 @@ const mockProducts = [
     specs: {
       outputPower: '30W PD Type-C + 18W QC USB-A',
       compatibility: 'Universal USB-C & USB-A Devices',
-      warranty: '12 Months Replacement Warranty',
+      warranty: '6 Months Replacement Warranty',
       color: 'Tactical Green & Matte Black',
       material: 'Shockproof TPU Armor & Solar Shell'
     },
@@ -450,7 +450,7 @@ const mockProducts = [
     specs: {
       outputPower: '15W Wireless Fast Charge + QC 3.0 Adapter Included',
       compatibility: 'MagSafe iPhone & Qi Wireless Android Phones',
-      warranty: '12 Months Warranty',
+      warranty: '6 Months Warranty',
       color: 'Carbon Fiber Texture & Teal LED Ring',
       material: 'Tempered Glass Face & Aluminum Clamp'
     },

@@ -221,7 +221,7 @@ export function Contact() {
                   >
                     <option value="General Inquiry">General Inquiry</option>
                     <option value="Order Tracking">Order Tracking</option>
-                    <option value="Warranty Claim">Warranty Claim (24 Mo)</option>
+                    <option value="Warranty Claim">Warranty Claim (6 Mo)</option>
                     <option value="Bulk/Corporate Order">Bulk / Corporate Order</option>
                   </select>
                 </div>

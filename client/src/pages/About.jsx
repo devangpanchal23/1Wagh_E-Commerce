@@ -82,9 +82,9 @@ export function About() {
                   <Award className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-wagh-dark text-base">24-Month Doorstep Warranty</h4>
+                  <h4 className="font-bold text-wagh-dark text-base">6-Month Doorstep Warranty</h4>
                   <p className="text-xs text-wagh-muted leading-relaxed">
-                    If anything breaks within 2 years, we replace it directly at your doorstep without hassle.
+                    If anything breaks within 6 months, we replace it directly at your doorstep without hassle.
                   </p>
                 </div>
               </div>

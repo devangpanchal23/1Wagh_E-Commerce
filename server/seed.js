@@ -126,7 +126,7 @@ const seedDatabase = async () => {
           size: 'Height: 5.2 cm | Width: 4.8 cm',
           height: '5.2 cm',
           width: '4.8 cm',
-          warranty: '24 Months Replacement Warranty',
+          warranty: '6 Months Replacement Warranty',
           color: 'Premium Deep Teal & Matte Gold',
           material: 'Fireproof PC + Anodized Aluminum Rim'
         },
@@ -158,7 +158,7 @@ const seedDatabase = async () => {
           size: 'Height: 6.5 cm | Width: 5.0 cm',
           height: '6.5 cm',
           width: '5.0 cm',
-          warranty: '24 Months Warranty',
+          warranty: '6 Months Warranty',
           color: 'Stealth Black',
           material: 'Gallium Nitride III Semiconductor'
         },
@@ -255,7 +255,7 @@ const seedDatabase = async () => {
           size: 'Length: 150 cm | Width: 0.5 cm',
           height: '150 cm',
           width: '0.5 cm',
-          warranty: '24 Months Replacement Warranty',
+          warranty: '6 Months Replacement Warranty',
           color: 'Deep Teal Braided Weave',
           material: 'Kevlar Reinforced Nylon Fiber'
         },
@@ -288,7 +288,7 @@ const seedDatabase = async () => {
           size: 'Length: 120 cm | Width: 0.4 cm',
           height: '120 cm',
           width: '0.4 cm',
-          warranty: '24 Months Warranty',
+          warranty: '6 Months Warranty',
           color: 'Off-White & Amber Gold Connectors',
           material: 'Braided Nylon + Zinc Alloy Shell'
         },

@@ -15,7 +15,7 @@ export default function AnnouncementBar() {
         </div>
         <div className="hidden lg:flex items-center gap-2 text-gray-200">
           <ShieldCheck className="w-4 h-4 text-wagh-gold" />
-          <span>24 Months Replacement Warranty</span>
+          <span>6 Months Replacement Warranty</span>
         </div>
       </div>
     </div>

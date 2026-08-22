@@ -1975,7 +1975,7 @@ export function Admin() {
                         <label className="block text-xs font-bold text-slate-700 mb-1">Warranty</label>
                         <input
                           type="text"
-                          placeholder="e.g. 24 Months Replacement"
+                          placeholder="e.g. 6 Months Replacement"
                           value={productForm.warranty || ''}
                           onChange={(e) => setProductForm({ ...productForm, warranty: e.target.value })}
                           className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-wagh-teal bg-white"
