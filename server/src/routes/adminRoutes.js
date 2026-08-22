@@ -18,6 +18,7 @@ const {
   createAdminCategory,
   deleteAdminCategory,
   getAdminUsers,
+  exportAdminUsers,
 } = require('../controllers/adminController');
 const { uploadProductImage, getMediaGallery } = require('../controllers/mediaController');
 const couponController = require('../controllers/couponController');
@@ -84,6 +85,8 @@ router.post('/categories', createAdminCategory);
 router.delete('/categories/:id', deleteAdminCategory);
 
 router.get('/users', getAdminUsers);
+// Returns a binary .xlsx attachment rather than JSON
+router.get('/users/export', exportAdminUsers);
 
 // Admin Coupon Management Routes (protected by verifyAdminToken)
 router.get('/coupons', couponController.getAllCoupons);

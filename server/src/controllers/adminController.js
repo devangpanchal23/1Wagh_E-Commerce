@@ -6,6 +6,7 @@ const User = require('../models/User');
 const Category = require('../models/Category');
 const { resolveCategoryId } = require('../utils/categoryResolver');
 const cache = require('../utils/cache');
+const { buildXlsxBuffer, XLSX_CONTENT_TYPE } = require('../utils/xlsxWriter');
 
 // @desc    Admin authentication with username & password
 // @route   POST /api/v1/admin/login
@@ -433,6 +434,35 @@ exports.deleteAdminCategory = async (req, res, next) => {
   }
 };
 
+// Escape regex metacharacters so a search term like "a+(" is matched literally
+// instead of compiling into a pattern that can throw or backtrack pathologically.
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Shared between the paginated customer list and the Excel export so both views
+// always agree on which accounts are considered customers.
+const buildCustomerQuery = (search) => {
+  const query = { role: { $ne: 'admin' } };
+
+  if (search && search.trim()) {
+    const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
+    query.$or = [
+      { name: searchRegex },
+      { email: searchRegex },
+      { mobileNumber: searchRegex },
+    ];
+  }
+
+  return query;
+};
+
+const resolveCustomerSort = (sort) => {
+  if (sort === 'joined_asc') return { createdAt: 1 };
+  if (sort === 'name_asc') return { name: 1 };
+  if (sort === 'name_desc') return { name: -1 };
+  if (sort === 'last_login_desc') return { lastLoginAt: -1 };
+  return { createdAt: -1 }; // default: joined_desc
+};
+
 // @desc    Get paginated, searchable, sortable list of customers for admin panel
 // @route   GET /api/v1/admin/users
 exports.getAdminUsers = async (req, res, next) => {
@@ -443,27 +473,8 @@ exports.getAdminUsers = async (req, res, next) => {
 
     const { search, sort } = req.query;
 
-    const query = { role: { $ne: 'admin' } };
-
-    if (search && search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i');
-      query.$or = [
-        { name: searchRegex },
-        { email: searchRegex },
-        { mobileNumber: searchRegex },
-      ];
-    }
-
-    let sortOptions = { createdAt: -1 }; // default: joined_desc
-    if (sort === 'joined_asc') {
-      sortOptions = { createdAt: 1 };
-    } else if (sort === 'name_asc') {
-      sortOptions = { name: 1 };
-    } else if (sort === 'name_desc') {
-      sortOptions = { name: -1 };
-    } else if (sort === 'last_login_desc') {
-      sortOptions = { lastLoginAt: -1 };
-    }
+    const query = buildCustomerQuery(search);
+    const sortOptions = resolveCustomerSort(sort);
 
     const total = await User.countDocuments(query);
     const users = await User.find(query)
@@ -483,6 +494,71 @@ exports.getAdminUsers = async (req, res, next) => {
       },
       message: 'Users fetched successfully',
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Guard against a single request trying to stream an unbounded collection into
+// memory on a serverless function. Comfortably above any realistic customer base.
+const USER_EXPORT_ROW_LIMIT = 25000;
+
+const GENDER_LABELS = {
+  male: 'Male',
+  female: 'Female',
+  other: 'Other',
+  prefer_not_to_say: 'Prefer not to say',
+};
+
+// @desc    Export all registered customers (name, phone, DOB, gender, email) as .xlsx
+// @route   GET /api/v1/admin/users/export
+exports.exportAdminUsers = async (req, res, next) => {
+  try {
+    const { search, sort } = req.query;
+
+    // Reuse the list endpoint's filter/sort so the download always matches what
+    // the admin currently sees in the Customers table.
+    const query = buildCustomerQuery(search);
+    const sortOptions = resolveCustomerSort(sort);
+
+    const users = await User.find(query)
+      .select('name email mobileNumber birthdate gender')
+      .sort(sortOptions)
+      .limit(USER_EXPORT_ROW_LIMIT)
+      .lean();
+
+    const rows = users.map((user) => ({
+      name: (user.name || '').trim(),
+      phone: (user.mobileNumber || '').trim(),
+      birthdate: (user.birthdate || '').trim(),
+      gender: GENDER_LABELS[user.gender] || '',
+      email: (user.email || '').trim(),
+    }));
+
+    const workbook = buildXlsxBuffer({
+      sheetName: 'WAGH Customers',
+      headerColor: 'FF0D5C52', // wagh-teal, matching the admin panel
+      columns: [
+        { header: 'Name', key: 'name', width: 28 },
+        { header: 'Phone Number', key: 'phone', width: 18 },
+        { header: 'Date of Birth', key: 'birthdate', width: 16, type: 'date' },
+        { header: 'Gender', key: 'gender', width: 18 },
+        { header: 'Email Address', key: 'email', width: 34 },
+      ],
+      rows,
+    });
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `wagh-customers-${stamp}.xlsx`;
+
+    res.setHeader('Content-Type', XLSX_CONTENT_TYPE);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', workbook.length);
+    res.setHeader('Cache-Control', 'no-store');
+    // Surfaced to the client so it can report how many rows were downloaded
+    res.setHeader('X-Total-Records', String(rows.length));
+
+    return res.status(200).end(workbook);
   } catch (error) {
     next(error);
   }

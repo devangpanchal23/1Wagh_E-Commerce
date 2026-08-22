@@ -61,6 +61,9 @@ const allowedOrigins = process.env.CLIENT_URL
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
+  // File downloads (e.g. the admin customer export) need these readable by JS
+  // when the client is served from a different origin than the API.
+  exposedHeaders: ['Content-Disposition', 'X-Total-Records'],
 }));
 
 // Body parser

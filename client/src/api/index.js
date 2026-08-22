@@ -96,3 +96,91 @@ export async function fetchAdminApi(endpoint, options = {}) {
     throw err;
   }
 }
+
+// Reads the download filename out of a Content-Disposition header, supporting
+// both the plain `filename="…"` and RFC 5987 `filename*=UTF-8''…` forms.
+function parseFilenameFromDisposition(disposition) {
+  if (!disposition) return '';
+
+  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  if (utf8Match) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim());
+    } catch {
+      // fall through to the plain filename below
+    }
+  }
+
+  const plainMatch = /filename="?([^";]+)"?/i.exec(disposition);
+  return plainMatch ? plainMatch[1].trim() : '';
+}
+
+/**
+ * Admin fetch helper for binary file downloads (Excel exports, etc).
+ * Mirrors fetchAdminApi's auth and 401 handling, but resolves to the raw Blob
+ * instead of parsed JSON. Error responses are still read as JSON so the server's
+ * message reaches the caller.
+ *
+ * @returns {Promise<{ blob: Blob, filename: string, totalRecords: number|null }>}
+ */
+export async function fetchAdminFile(endpoint, options = {}) {
+  const adminToken =
+    localStorage.getItem('wagh_admin_token') || sessionStorage.getItem('wagh_admin_token');
+
+  const headers = {
+    ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+    ...options.headers,
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        localStorage.removeItem('wagh_admin_token');
+        sessionStorage.removeItem('wagh_admin_token');
+      }
+      const errorBody = await res.json().catch(() => ({}));
+      throw new Error(errorBody.message || `Download failed (${res.status})`);
+    }
+
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) {
+      throw new Error('The server returned an empty file');
+    }
+
+    const totalHeader = res.headers.get('X-Total-Records');
+
+    return {
+      blob,
+      filename: parseFilenameFromDisposition(res.headers.get('Content-Disposition')),
+      totalRecords: totalHeader === null ? null : Number(totalHeader),
+    };
+  } catch (err) {
+    console.warn(`Admin File Download Error [${endpoint}]:`, err.message);
+    throw err;
+  }
+}
+
+/**
+ * Trigger a browser "Save as" for an in-memory Blob.
+ * Uses a temporary object URL + synthetic anchor click, which is the only
+ * approach that works consistently on desktop and mobile browsers (including
+ * iOS Safari) for files fetched with an Authorization header.
+ */
+export function downloadBlob(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = objectUrl;
+  link.download = filename || 'download';
+  link.rel = 'noopener';
+  link.style.display = 'none';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  // Revoke on the next tick so Safari has time to start the download
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}

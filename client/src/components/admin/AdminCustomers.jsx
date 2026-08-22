@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users, Search, ArrowUpDown, ChevronLeft, ChevronRight,
-  ShieldCheck, AlertCircle, RefreshCw, Calendar, Phone, Mail, UserCheck
+  ShieldCheck, AlertCircle, RefreshCw, Calendar, Phone, Mail, UserCheck,
+  FileSpreadsheet, Loader2
 } from 'lucide-react';
-import { fetchAdminApi } from '../../api';
+import { fetchAdminApi, fetchAdminFile, downloadBlob } from '../../api';
 import { useToast } from '../../context/ToastContext';
 
 // Helper to format date cleanly (e.g. "Aug 18, 2026")
@@ -68,6 +69,7 @@ export function AdminCustomers() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   // Debounce search input by 300ms
   useEffect(() => {
@@ -112,6 +114,37 @@ export function AdminCustomers() {
   const toggleSort = () => {
     setSort((prev) => (prev === 'joined_desc' ? 'joined_asc' : 'joined_desc'));
     setPage(1);
+  };
+
+  // Downloads every customer matching the current search/sort as an .xlsx file
+  // (Name, Phone, DOB, Gender, Email) — not just the rows on the current page.
+  const handleExportExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
+
+    try {
+      const queryParams = new URLSearchParams({
+        sort,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      });
+
+      const { blob, filename, totalRecords } = await fetchAdminFile(
+        `/admin/users/export?${queryParams.toString()}`
+      );
+
+      const fallbackName = `wagh-customers-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      downloadBlob(blob, filename || fallbackName);
+
+      const countLabel = Number.isFinite(totalRecords)
+        ? `${totalRecords} customer${totalRecords === 1 ? '' : 's'}`
+        : 'Customer list';
+      addToast(`${countLabel} exported to Excel`, 'success');
+    } catch (err) {
+      console.error('Customer Excel export failed:', err);
+      addToast(err.message || 'Failed to export customers to Excel', 'error');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -175,6 +208,25 @@ export function AdminCustomers() {
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
+
+          {/* Export to Excel — downloads every matching customer, not just this page */}
+          <button
+            onClick={handleExportExcel}
+            disabled={exporting || (!loading && totalCount === 0)}
+            title={
+              debouncedSearch
+                ? `Export customers matching "${debouncedSearch}" to Excel`
+                : 'Export all registered customers to Excel'
+            }
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-wagh-teal text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs hover:bg-wagh-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+          >
+            {exporting ? (
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            ) : (
+              <FileSpreadsheet className="w-4 h-4 shrink-0" />
+            )}
+            <span>{exporting ? 'Preparing file…' : 'Export to Excel'}</span>
+          </button>
         </div>
       </div>
 

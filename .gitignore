@@ -14,4 +14,4 @@ build/
 *.log
 node_modules/
 .vercel
- 
+.claude/
