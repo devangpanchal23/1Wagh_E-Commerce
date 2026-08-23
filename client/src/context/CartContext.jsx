@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { syncCartOnLogin, saveUserCartToFirestore } from '../utils/cartSync';
 
 const CartContext = createContext();
+const CartActionsContext = createContext();
 
 export function CartProvider({ children }) {
   const { user } = useAuth();
@@ -68,7 +69,7 @@ export function CartProvider({ children }) {
     }
   }, [cartItems, user?.uid, isHydrated]);
 
-  const addToCart = (product, qty = 1, variantOptions = null) => {
+  const addToCart = useCallback((product, qty = 1, variantOptions = null) => {
     const pId = product._id || product.id || product;
     const sku = variantOptions?.sku || '';
 
@@ -107,32 +108,9 @@ export function CartProvider({ children }) {
 
     const label = variantOptions?.sizeLabel ? `${product.name} (${variantOptions.colorName} / ${variantOptions.sizeLabel})` : (product.name || 'Item');
     addToast(`Added "${label}" to cart`, 'success');
-  };
+  }, [addToast, user?.uid]);
 
-  const updateQty = (productId, newQty, sku = '') => {
-    if (newQty <= 0) {
-      removeFromCart(productId, sku);
-      return;
-    }
-
-    setCartItems((prev) => {
-      const updated = prev.map((item) => {
-        const pId = item.product?._id || item.product?.id || item.product || item.productId;
-        const itemSku = item.sku || '';
-        if (pId === productId && (sku ? itemSku === sku : !itemSku)) {
-          return { ...item, qty: newQty };
-        }
-        return item;
-      });
-
-      if (user?.uid) {
-        saveUserCartToFirestore(user.uid, updated);
-      }
-      return updated;
-    });
-  };
-
-  const removeFromCart = (productId, sku = '') => {
+  const removeFromCart = useCallback((productId, sku = '') => {
     setCartItems((prev) => {
       const updated = prev.filter((item) => {
         const pId = item.product?._id || item.product?.id || item.product || item.productId;
@@ -147,19 +125,38 @@ export function CartProvider({ children }) {
       return updated;
     });
     addToast('Item removed from cart', 'info');
-  };
+  }, [addToast, user?.uid]);
+
+  const updateQty = useCallback((productId, newQty, sku = '') => {
+    if (newQty <= 0) {
+      removeFromCart(productId, sku);
+      return;
+    }
+
+    setCartItems((prev) => {
+      const updated = prev.map((item) => {
+        const pId = item.product?._id || item.product?.id || item.product || item.productId;
+        const itemSku = item.sku || '';
+        return pId === productId && (sku ? itemSku === sku : !itemSku)
+          ? { ...item, qty: newQty }
+          : item;
+      });
+      if (user?.uid) saveUserCartToFirestore(user.uid, updated);
+      return updated;
+    });
+  }, [removeFromCart, user?.uid]);
 
   const [appliedCoupon, setAppliedCoupon] = useState(null);
 
-  const applyCouponState = (couponData) => {
+  const applyCouponState = useCallback((couponData) => {
     setAppliedCoupon(couponData);
-  };
+  }, []);
 
-  const removeCouponState = () => {
+  const removeCouponState = useCallback(() => {
     setAppliedCoupon(null);
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCartItems([]);
     setAppliedCoupon(null);
     if (user?.uid) {
@@ -168,48 +165,40 @@ export function CartProvider({ children }) {
     }
     localStorage.removeItem('wagh_guest_cart');
     localStorage.removeItem('wagh_cart');
-  };
+  }, [user?.uid]);
 
   // Computations
-  const totalItemCount = cartItems.reduce((sum, item) => sum + (item.qty || 1), 0);
+  const totals = useMemo(() => {
+    const totalItemCount = cartItems.reduce((sum, item) => sum + (item.qty || 1), 0);
+    const subtotal = cartItems.reduce((sum, item) => {
+      const price = item.price !== undefined ? item.price : (item.product?.price || 0);
+      return sum + price * (item.qty || 1);
+    }, 0);
+    const shippingFee = subtotal >= 499 || subtotal === 0 ? 0 : 49;
+    const couponDiscount = appliedCoupon && subtotal >= (appliedCoupon.minCartValue || 0)
+      ? (appliedCoupon.discountAmount || 0)
+      : 0;
+    return { totalItemCount, subtotal, shippingFee, couponDiscount, grandTotal: Math.max(0, subtotal - couponDiscount) + shippingFee };
+  }, [cartItems, appliedCoupon]);
 
-  const subtotal = cartItems.reduce((sum, item) => {
-    const price = item.price !== undefined ? item.price : (item.product?.price || 0);
-    return sum + price * (item.qty || 1);
-  }, 0);
+  const actions = useMemo(() => ({
+    addToCart, updateQty, removeFromCart, clearCart, applyCouponState, removeCouponState,
+  }), [addToCart, updateQty, removeFromCart, clearCart, applyCouponState, removeCouponState]);
 
-  // Free shipping on orders over ₹499
-  const shippingFee = subtotal >= 499 || subtotal === 0 ? 0 : 49;
-  
-  // Calculate discount from applied coupon if minCartValue requirement is still met
-  let couponDiscount = 0;
-  if (appliedCoupon && subtotal >= (appliedCoupon.minCartValue || 0)) {
-    couponDiscount = appliedCoupon.discountAmount || 0;
-  }
-
-  const grandTotal = Math.max(0, subtotal - couponDiscount) + shippingFee;
+  const value = useMemo(() => ({
+    cartItems,
+    ...actions,
+    ...totals,
+    appliedCoupon: totals.subtotal >= (appliedCoupon?.minCartValue || 0) ? appliedCoupon : null,
+    couponDiscount: totals.subtotal >= (appliedCoupon?.minCartValue || 0) ? totals.couponDiscount : 0,
+  }), [cartItems, actions, totals, appliedCoupon]);
 
   return (
-    <CartContext.Provider
-      value={{
-        cartItems,
-        addToCart,
-        updateQty,
-        removeFromCart,
-        clearCart,
-        totalItemCount,
-        subtotal,
-        shippingFee,
-        grandTotal,
-        appliedCoupon: subtotal >= (appliedCoupon?.minCartValue || 0) ? appliedCoupon : null,
-        couponDiscount: subtotal >= (appliedCoupon?.minCartValue || 0) ? couponDiscount : 0,
-        applyCouponState,
-        removeCouponState,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+    <CartActionsContext.Provider value={actions}>
+      <CartContext.Provider value={value}>{children}</CartContext.Provider>
+    </CartActionsContext.Provider>
   );
 }
 
 export const useCart = () => useContext(CartContext);
+export const useCartActions = () => useContext(CartActionsContext);

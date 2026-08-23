@@ -45,6 +45,8 @@ export function Shop() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isCurrent = true;
     const loadProducts = async () => {
       setLoading(true);
       try {
@@ -60,8 +62,8 @@ export function Shop() {
         if (maxPriceParam) queryParams.append('maxPrice', maxPriceParam);
         if (inStockParam) queryParams.append('inStock', 'true');
 
-        const res = await fetchApi(`/products?${queryParams.toString()}`);
-        if (res.success && res.data) {
+        const res = await fetchApi(`/products?${queryParams.toString()}`, { signal: controller.signal });
+        if (isCurrent && res.success && res.data) {
           setProducts(res.data.products || []);
           setTotalCount(res.data.total || 0);
           setTotalPages(res.data.pages || 1);
@@ -70,13 +72,19 @@ export function Shop() {
           }
         }
       } catch (err) {
-        console.error('Products load error', err);
-        setProducts([]);
+        if (err.name !== 'AbortError') {
+          console.error('Products load error', err);
+          if (isCurrent) setProducts([]);
+        }
       } finally {
-        setLoading(false);
+        if (isCurrent) setLoading(false);
       }
     };
     loadProducts();
+    return () => {
+      isCurrent = false;
+      controller.abort();
+    };
   }, [searchParams]);
 
   const updateFilters = (newParams) => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { fetchApi } from '../api';
@@ -21,7 +21,7 @@ export function WishlistProvider({ children }) {
       setWishlistIds([]);
       setWishlistProducts([]);
     }
-  }, [user?.wishlist, user]);
+  }, [user?.wishlist]);
 
   // Fetch product objects matching wishlistIds
   useEffect(() => {
@@ -30,18 +30,24 @@ export function WishlistProvider({ children }) {
       return;
     }
 
+    const controller = new AbortController();
     let isMounted = true;
     const loadWishlistProducts = async () => {
       setLoading(true);
       try {
-        const res = await fetchApi('/products?limit=100');
+        // Load only products the customer has saved; fetching a full catalog here
+        // made a wishlist update increasingly expensive as the catalog grew.
+        const ids = wishlistIds.slice(0, 60).join(',');
+        const res = await fetchApi(`/products?ids=${encodeURIComponent(ids)}&limit=${Math.min(wishlistIds.length, 60)}`, {
+          signal: controller.signal,
+        });
         if (res && res.success && res.data?.products && isMounted) {
           const allProds = res.data.products;
           const matched = allProds.filter((p) => wishlistIds.includes(String(p._id)));
           setWishlistProducts(matched);
         }
       } catch (err) {
-        console.error('Error fetching wishlist products:', err);
+        if (err.name !== 'AbortError') console.error('Error fetching wishlist products:', err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -50,15 +56,16 @@ export function WishlistProvider({ children }) {
     loadWishlistProducts();
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, [wishlistIds]);
 
-  const isInWishlist = (productId) => {
+  const isInWishlist = useCallback((productId) => {
     if (!productId) return false;
     return wishlistIds.includes(String(productId));
-  };
+  }, [wishlistIds]);
 
-  const toggleWishlist = async (product) => {
+  const toggleWishlist = useCallback(async (product) => {
     if (!user) {
       addToast('Please sign in to save items to your wishlist.', 'info');
       if (typeof window !== 'undefined') {
@@ -94,18 +101,18 @@ export function WishlistProvider({ children }) {
       setWishlistIds(prevIds);
       addToast('Failed to sync wishlist.', 'error');
     }
-  };
+  }, [addToast, updateUserProfile, user, wishlistIds]);
+
+  const value = useMemo(() => ({
+    wishlist: wishlistProducts,
+    wishlistIds,
+    loading,
+    toggleWishlist,
+    isInWishlist,
+  }), [wishlistProducts, wishlistIds, loading, toggleWishlist, isInWishlist]);
 
   return (
-    <WishlistContext.Provider
-      value={{
-        wishlist: wishlistProducts,
-        wishlistIds,
-        loading,
-        toggleWishlist,
-        isInWishlist,
-      }}
-    >
+    <WishlistContext.Provider value={value}>
       {children}
     </WishlistContext.Provider>
   );

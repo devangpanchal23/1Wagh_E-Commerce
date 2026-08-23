@@ -11,23 +11,23 @@ import { AdminGateway } from './components/AdminGateway';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Pages
-import { Home } from './pages/Home';
-import { Shop } from './pages/Shop';
-import { ProductDetail } from './pages/ProductDetail';
-import { Cart } from './pages/Cart';
-import { Checkout } from './pages/Checkout';
-import { About } from './pages/About';
-import { Contact } from './pages/Contact';
-import { Profile } from './pages/Profile';
-import { Admin } from './pages/Admin';
-import PaymentReceipt from './pages/PaymentReceipt';
-import PurchaseInvoice from './pages/PurchaseInvoice';
-import SignInPage from './pages/SignInPage';
-import SignUpPage from './pages/SignUpPage';
-import VerifyOtpPage from './pages/VerifyOtpPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import NotFound from './pages/NotFound';
+const Home = React.lazy(() => import('./pages/Home').then((module) => ({ default: module.Home })));
+const Shop = React.lazy(() => import('./pages/Shop').then((module) => ({ default: module.Shop })));
+const ProductDetail = React.lazy(() => import('./pages/ProductDetail').then((module) => ({ default: module.ProductDetail })));
+const Cart = React.lazy(() => import('./pages/Cart').then((module) => ({ default: module.Cart })));
+const Checkout = React.lazy(() => import('./pages/Checkout').then((module) => ({ default: module.Checkout })));
+const About = React.lazy(() => import('./pages/About').then((module) => ({ default: module.About })));
+const Contact = React.lazy(() => import('./pages/Contact').then((module) => ({ default: module.Contact })));
+const Profile = React.lazy(() => import('./pages/Profile').then((module) => ({ default: module.Profile })));
+const Admin = React.lazy(() => import('./pages/Admin').then((module) => ({ default: module.Admin })));
+const PaymentReceipt = React.lazy(() => import('./pages/PaymentReceipt'));
+const PurchaseInvoice = React.lazy(() => import('./pages/PurchaseInvoice'));
+const SignInPage = React.lazy(() => import('./pages/SignInPage'));
+const SignUpPage = React.lazy(() => import('./pages/SignUpPage'));
+const VerifyOtpPage = React.lazy(() => import('./pages/VerifyOtpPage'));
+const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage'));
+const NotFound = React.lazy(() => import('./pages/NotFound').then((module) => ({ default: module.NotFound })));
 
 // Context Providers
 import { ToastProvider } from './context/ToastContext';
@@ -95,6 +95,7 @@ function MainAppLayout() {
       />
 
       <main className="flex-1">
+        <React.Suspense fallback={<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><div className="h-8 w-56 rounded bg-slate-200 animate-pulse" /><div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-6">{Array.from({ length: 4 }, (_, index) => <div key={index} className="aspect-[4/5] rounded-2xl bg-slate-200 animate-pulse" />)}</div></div>}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/shop" element={<Shop />} />
@@ -146,6 +147,7 @@ function MainAppLayout() {
           {/* Catch-all Wildcard Route for 404 Not Found Page */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </React.Suspense>
       </main>
 
       <Footer />

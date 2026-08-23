@@ -144,15 +144,32 @@ export function ProductDetail() {
   const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isCurrent = true;
+
     const loadProductAndRelated = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetchApi(`/products/${id}`);
+        // Reviews do not depend on the product response, so start them with the
+        // product request instead of adding a full network round trip.
+        const [res, reviewsResult] = await Promise.all([
+          fetchApi(`/products/${id}`, { signal: controller.signal }),
+          fetchApi(`/products/${id}/reviews`, { signal: controller.signal })
+            .catch((reviewError) => {
+              if (reviewError.name !== 'AbortError') console.error('Failed to load reviews:', reviewError);
+              return null;
+            }),
+        ]);
+
+        if (!isCurrent) return;
         if (res && res.data) {
           const loadedProduct = res.data;
           setProduct(loadedProduct);
           setSelectedImage(0);
+          setReviews(reviewsResult?.data
+            ? (Array.isArray(reviewsResult.data) ? reviewsResult.data : (reviewsResult.data.reviews || []))
+            : []);
 
           // Handle variant initialization from URL query parameters (?color=...&size=...)
           if (loadedProduct.hasVariants && Array.isArray(loadedProduct.variants) && loadedProduct.variants.length > 0) {
@@ -184,39 +201,33 @@ export function ProductDetail() {
             setSelectedSizeIdx(sizeIdx);
           }
 
-          // Fetch reviews
-          try {
-            const revRes = await fetchApi(`/products/${id}/reviews`);
-            if (revRes && revRes.data) {
-              setReviews(Array.isArray(revRes.data) ? revRes.data : (revRes.data.reviews || []));
-            }
-          } catch (e) {
-            console.error('Failed to load reviews:', e);
-          }
-
           // Fetch related products
           if (loadedProduct.category) {
             try {
               const catId = typeof loadedProduct.category === 'object' ? loadedProduct.category._id : loadedProduct.category;
-              const relRes = await fetchApi(`/products?category=${catId}&limit=5`);
-              if (relRes && relRes.data) {
+              const relRes = await fetchApi(`/products?category=${catId}&limit=5`, { signal: controller.signal });
+              if (isCurrent && relRes && relRes.data) {
                 const relList = Array.isArray(relRes.data) ? relRes.data : (relRes.data.products || []);
                 setRelatedProducts(relList.filter((p) => String(p._id) !== String(id)));
               }
             } catch (e) {
-              console.error('Failed to load related products:', e);
+              if (e.name !== 'AbortError') console.error('Failed to load related products:', e);
             }
           }
         }
       } catch (err) {
-        setError(err.message || 'Failed to load product');
+        if (err.name !== 'AbortError' && isCurrent) setError(err.message || 'Failed to load product');
       } finally {
-        setLoading(false);
+        if (isCurrent) setLoading(false);
       }
     };
 
     loadProductAndRelated();
     window.scrollTo(0, 0);
+    return () => {
+      isCurrent = false;
+      controller.abort();
+    };
   }, [id]);
 
   // Derived variant computations
@@ -424,6 +435,7 @@ export function ProductDetail() {
               alt={product.name}
               variant="detail"
               className="w-full h-full border-0 p-0 object-contain max-h-[480px]"
+              priority
             />
 
             {discountPercent > 0 && (

@@ -106,6 +106,10 @@ export function Home() {
                   src="/assets/branding/wagh-100w-launch-banner.png"
                   alt="WAGH 100W Fast Charger New Launch Banner"
                   className="w-full h-full object-cover sm:object-contain group-hover:scale-105 transition-transform duration-500 rounded-2xl"
+                  width="800"
+                  height="800"
+                  fetchPriority="high"
+                  decoding="async"
                 />
               </div>
 

@@ -3,6 +3,29 @@ const API_BASE = `${BASE_URL.replace(/\/$/, '')}/api/v1`;
 
 let inMemoryAccessToken = null;
 
+// Catalog data is public, changes infrequently, and is requested by several
+// independent components (especially in development Strict Mode). Keep a very
+// small client-side cache and coalesce identical in-flight reads so navigation
+// never creates duplicate network work. Authenticated/profile requests are
+// deliberately excluded to avoid serving stale personal data.
+const publicReadCache = new Map();
+const inFlightReads = new Map();
+const PUBLIC_READ_TTLS = [
+  { pattern: /^\/categories(?:\?|$)/, ttl: 10 * 60 * 1000 },
+  { pattern: /^\/products\/collections\/featured(?:\?|$)/, ttl: 5 * 60 * 1000 },
+  { pattern: /^\/products(?:\/[^/?]+)?(?:\?|$)/, ttl: 60 * 1000 },
+];
+
+function publicReadTtl(endpoint) {
+  return PUBLIC_READ_TTLS.find(({ pattern }) => pattern.test(endpoint))?.ttl || 0;
+}
+
+export function invalidatePublicReadCache(...prefixes) {
+  for (const key of publicReadCache.keys()) {
+    if (prefixes.some((prefix) => key.startsWith(prefix))) publicReadCache.delete(key);
+  }
+}
+
 export function setAccessToken(token) {
   inMemoryAccessToken = token;
 }
@@ -14,6 +37,18 @@ export function getAccessToken() {
 // Customer API fetch helper — sends httpOnly cookies & handles access token refresh
 export async function fetchApi(endpoint, options = {}) {
   const { headers: customHeaders, _isRetry, ...fetchOptions } = options;
+  const method = (fetchOptions.method || 'GET').toUpperCase();
+  const cacheTtl = method === 'GET' && !fetchOptions.signal && !_isRetry
+    ? publicReadTtl(endpoint)
+    : 0;
+  const cacheKey = `${method}:${endpoint}`;
+
+  if (cacheTtl) {
+    const cached = publicReadCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.data;
+    if (cached) publicReadCache.delete(cacheKey);
+    if (inFlightReads.has(cacheKey)) return inFlightReads.get(cacheKey);
+  }
 
   const headers = {
     'Content-Type': 'application/json',
@@ -21,6 +56,7 @@ export async function fetchApi(endpoint, options = {}) {
     ...customHeaders,
   };
 
+  const request = (async () => {
   try {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       ...fetchOptions,
@@ -58,10 +94,27 @@ export async function fetchApi(endpoint, options = {}) {
       throw new Error(data.message || 'Something went wrong');
     }
 
+    if (method !== 'GET' && (/^\/products(?:\/|$)/.test(endpoint) || /^\/categories(?:\/|$)/.test(endpoint))) {
+      // Product/category writes must be visible immediately in the same tab.
+      invalidatePublicReadCache('GET:/products', 'GET:/categories');
+    }
+
     return data;
   } catch (err) {
     console.warn(`API Error [${endpoint}]:`, err.message);
     throw err;
+  }
+  })();
+
+  if (!cacheTtl) return request;
+
+  inFlightReads.set(cacheKey, request);
+  try {
+    const data = await request;
+    publicReadCache.set(cacheKey, { data, expiresAt: Date.now() + cacheTtl });
+    return data;
+  } finally {
+    inFlightReads.delete(cacheKey);
   }
 }
 

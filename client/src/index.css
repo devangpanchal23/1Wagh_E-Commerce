@@ -70,6 +70,15 @@
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .glass-nav {
   background: rgba(250, 249, 246, 0.85);
   backdrop-filter: blur(12px);
@@ -170,6 +179,5 @@ div[style*="Double-click"] {
     print-color-adjust: exact !important;
   }
 }
-
 
 

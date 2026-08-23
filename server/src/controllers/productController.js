@@ -6,7 +6,7 @@ const cache = require('../utils/cache');
 // Fields a product grid card actually renders. Skipping `sections` and `description`
 // keeps listing payloads small — those are only needed on the detail page.
 const LIST_PROJECTION =
-  'name slug price mrp images category brand stock ratingAvg ratingCount isFeatured isNewArrival isBestSeller hasVariants variants createdAt';
+  'name slug price mrp images category brand stock ratingAvg ratingCount isFeatured isNewArrival isBestSeller hasVariants createdAt';
 
 // @desc    Get products with search, filter, sort & pagination
 // @route   GET /api/v1/products
@@ -26,6 +26,16 @@ exports.getProducts = async (req, res, next) => {
     }
 
     const query = {};
+
+    // Wishlist and other small client collections can request exact products
+    // instead of downloading a broad catalog page and filtering in the browser.
+    if (req.query.ids) {
+      const ids = req.query.ids
+        .split(',')
+        .map((id) => id.trim())
+        .filter((id) => /^[0-9a-fA-F]{24}$/.test(id));
+      query._id = { $in: ids };
+    }
 
     // Search query
     if (req.query.search) {

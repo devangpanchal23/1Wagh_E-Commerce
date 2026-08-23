@@ -9,6 +9,7 @@ export function ProductImage({
   className = '',
   imgClassName = '',
   onClick,
+  priority = false,
   ...props
 }) {
   const [loaded, setLoaded] = useState(false);
@@ -75,7 +76,11 @@ export function ProductImage({
           className={`max-h-full max-w-full object-contain transition-all duration-300 ${
             loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
           } ${imgClassName}`}
-          loading="lazy"
+          // The detail gallery can be the LCP element. Grid images remain lazy
+          // so off-screen product cards do not compete with initial rendering.
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
+          decoding="async"
         />
       ) : (
         <div className="flex flex-col items-center justify-center p-3 text-center text-slate-400 text-xs font-medium space-y-1">

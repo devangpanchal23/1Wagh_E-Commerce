@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { ShoppingBag, Heart, Eye, Zap } from 'lucide-react';
 import { RatingStars } from './RatingStars';
 import { ProductImage } from './ProductImage';
-import { useCart } from '../context/CartContext';
+import { useCartActions } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 
-export function ProductCard({ product }) {
-  const { addToCart } = useCart();
+export const ProductCard = React.memo(function ProductCard({ product }) {
+  const { addToCart } = useCartActions();
   const { wishlist, toggleWishlist, isInWishlist } = useWishlist();
 
   const isLiked = isInWishlist(product._id);
@@ -101,4 +101,4 @@ export function ProductCard({ product }) {
       </div>
     </div>
   );
-}
+});
