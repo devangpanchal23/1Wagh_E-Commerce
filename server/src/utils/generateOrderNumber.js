@@ -18,9 +18,10 @@ function getISTMonthYearKey(dateInput = new Date()) {
 }
 
 /**
- * Atomically generates a sequential 8-digit order number (MMYY + 4-digit sequence)
+ * Atomically generates the canonical customer-facing order number:
+ * WAGH-MMYY#### (MM = IST month, YY = year, #### = monthly sequence).
  * Resets to 0001 at the start of every new calendar month in IST.
- * Example: "08260001", "08260002"
+ * Example: "WAGH-08260001", "WAGH-08260002"
  */
 async function generateOrderNumber(dateInput = new Date()) {
   const monthYearKey = getISTMonthYearKey(dateInput);
@@ -32,7 +33,7 @@ async function generateOrderNumber(dateInput = new Date()) {
   );
 
   const seqPadded = String(counter.lastSequence).padStart(4, '0');
-  return `${monthYearKey}${seqPadded}`;
+  return `WAGH-${monthYearKey}${seqPadded}`;
 }
 
 module.exports = {

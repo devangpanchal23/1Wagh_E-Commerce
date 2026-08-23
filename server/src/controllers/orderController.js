@@ -203,14 +203,16 @@ exports.createOrder = async (req, res, next) => {
     const sgst = Math.round((gstAmount / 2) * 100) / 100;
 
     const finalTotal = Math.round((netSubtotal + Number(shippingFee)) * 100) / 100;
-    const orderIdStr = 'WAGH-' + Math.floor(100000 + Math.random() * 900000);
     const orderNumber = await generateOrderNumber();
 
     const isPaid = paymentMethod === 'Razorpay' || (razorpayPaymentId ? true : false);
 
     const order = await Order.create({
       user: req.user._id,
-      orderId: orderIdStr,
+      // Keep the legacy field equal to the canonical field. Older client and
+      // receipt code still reads orderId, so one source of truth prevents IDs
+      // diverging between checkout, admin, and order details.
+      orderId: orderNumber,
       orderNumber,
       items: sanitizedItems,
       shippingAddress,
@@ -259,19 +261,19 @@ exports.createOrder = async (req, res, next) => {
     }
 
     // Auto-create initial PaymentReceipt
-    const receiptNumber = `WAG-PAY-${new Date().getFullYear()}-${orderIdStr.replace('WAGH-', '')}`;
+    const receiptNumber = `WAG-PAY-${new Date().getFullYear()}-${orderNumber.replace('WAGH-', '')}`;
     const paymentDate = order.createdAt || new Date();
     const paymentTime = new Date(paymentDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
     await PaymentReceipt.create({
       receiptNumber,
       order: order._id,
-      orderIdString: order.orderId,
+      orderIdString: orderNumber,
       user: req.user._id,
       paymentDate,
       paymentTime,
       paymentMode: order.paymentMethod,
-      gatewayTransactionId: razorpayPaymentId || razorpayOrderId || (order.paymentMethod === 'COD' ? `COD-${order.orderId}` : 'N/A'),
+      gatewayTransactionId: razorpayPaymentId || razorpayOrderId || (order.paymentMethod === 'COD' ? `COD-${orderNumber}` : 'N/A'),
       subtotal: order.subtotal,
       gstAmount,
       gstBreakdown: { cgst, sgst, igst: 0 },
@@ -297,7 +299,7 @@ exports.createOrder = async (req, res, next) => {
 exports.getMyOrders = async (req, res, next) => {
   try {
     const orders = await Order.find({ user: req.user._id })
-      .select('orderId items shippingAddress paymentMethod paymentStatus orderStatus subtotal shippingFee discount couponCode couponDiscount gstAmount total createdAt razorpayPaymentId razorpayOrderId')
+      .select('orderId orderNumber items shippingAddress paymentMethod paymentStatus orderStatus subtotal shippingFee discount couponCode couponDiscount gstAmount total createdAt razorpayPaymentId razorpayOrderId')
       .sort({ createdAt: -1 })
       .lean();
     res.json({

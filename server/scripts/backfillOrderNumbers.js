@@ -48,10 +48,11 @@ async function backfillOrderNumbers() {
       );
 
       const seqPadded = String(counter.lastSequence).padStart(4, '0');
-      const generatedOrderNumber = `${monthYearKey}${seqPadded}`;
+      const generatedOrderNumber = `WAGH-${monthYearKey}${seqPadded}`;
 
-      // Assign and save
+      // Keep both fields identical while legacy API consumers are still present.
       order.orderNumber = generatedOrderNumber;
+      order.orderId = generatedOrderNumber;
       await order.save();
 
       totalBackfilled += 1;
