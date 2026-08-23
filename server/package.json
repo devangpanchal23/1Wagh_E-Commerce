@@ -4,7 +4,7 @@
   "description": "Backend REST API for WAGH Mobile Accessories E-commerce Platform",
   "main": "src/server.js",
   "scripts": {
-    "predev": "lsof -ti:${PORT:-5050} | xargs kill -9 2>/dev/null || true",
+    "predev": "[ -f .env ] || cp .env.example .env; lsof -ti:${PORT:-5050} | xargs kill -9 2>/dev/null || true",
     "start": "node src/server.js",
     "dev": "node --watch --watch-path=.env --watch-path=src src/server.js",
     "seed": "node seed.js",

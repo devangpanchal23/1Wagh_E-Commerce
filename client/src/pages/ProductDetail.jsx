@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingBag, Zap, ShieldCheck, Truck, RefreshCw, Heart, ChevronRight, ChevronLeft,
@@ -95,6 +95,9 @@ function getValidAdminSpecs(product) {
   return valid;
 }
 
+// Minimum horizontal travel (px) that counts as a swipe instead of a tap/click
+const SWIPE_THRESHOLD = 40;
+
 // Robust fallback description to guarantee Product Details are ALWAYS visible
 function getProductDescriptionFallback(product) {
   if (product?.description && product.description.trim().length > 10) {
@@ -126,9 +129,10 @@ export function ProductDetail() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
 
-  // Swipe gesture state for image slider
-  const [touchStartX, setTouchStartX] = useState(null);
-  const [touchEndX, setTouchEndX] = useState(null);
+  // Swipe/drag gesture tracking for the image slider.
+  // Kept in refs so moving a finger/mouse never triggers a re-render.
+  const swipeRef = useRef({ pointerId: null, startX: 0, deltaX: 0 });
+  const swipedRef = useRef(false);
 
   // Variant selection state
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
@@ -231,28 +235,54 @@ export function ProductDetail() {
     ? Math.round(((currentMrp - currentPrice) / currentMrp) * 100)
     : 0;
 
-  // Swipe gesture handlers
-  const minSwipeDistance = 40;
+  // Swipe gesture handlers (touch on mobile, click-drag on desktop)
+  const imageCount = Array.isArray(currentImages) ? currentImages.length : 0;
 
-  const handleTouchStart = (e) => {
-    setTouchEndX(null);
-    setTouchStartX(e.targetTouches[0].clientX);
+  // Steps the gallery by one image and stops at the first/last one (no wrap-around)
+  const shiftImage = (step) => {
+    if (imageCount <= 1) return;
+    setSelectedImage((prev) => {
+      const next = prev + step;
+      return next < 0 || next > imageCount - 1 ? prev : next;
+    });
   };
 
-  const handleTouchMove = (e) => {
-    setTouchEndX(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStartX || !touchEndX || !currentImages || currentImages.length <= 1) return;
-    const distance = touchStartX - touchEndX;
-    if (distance > minSwipeDistance) {
-      // Swiped Left -> Next Image
-      setSelectedImage((prev) => (prev + 1) % currentImages.length);
-    } else if (distance < -minSwipeDistance) {
-      // Swiped Right -> Previous Image
-      setSelectedImage((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+  const handlePointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // A second pointer means pinch-zoom or similar: abort instead of jumping
+    if (swipeRef.current.pointerId !== null) {
+      swipeRef.current.pointerId = null;
+      return;
     }
+    swipedRef.current = false;
+    swipeRef.current = { pointerId: e.pointerId, startX: e.clientX, deltaX: 0 };
+  };
+
+  const handlePointerMove = (e) => {
+    if (swipeRef.current.pointerId !== e.pointerId) return;
+    swipeRef.current.deltaX = e.clientX - swipeRef.current.startX;
+  };
+
+  const handlePointerUp = (e) => {
+    if (swipeRef.current.pointerId !== e.pointerId) return;
+    const { deltaX } = swipeRef.current;
+    swipeRef.current.pointerId = null;
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+    swipedRef.current = true; // a swipe must not be treated as a click
+    shiftImage(deltaX < 0 ? 1 : -1); // drag left -> next, drag right -> previous
+  };
+
+  // Vertical page scroll (pointercancel) or leaving the gallery mid-drag aborts the swipe
+  const handlePointerAbort = (e) => {
+    if (swipeRef.current.pointerId === e.pointerId) swipeRef.current.pointerId = null;
+  };
+
+  const handleGalleryClick = () => {
+    if (swipedRef.current) {
+      swipedRef.current = false;
+      return;
+    }
+    setLightboxOpen(true);
   };
 
   const updateUrlParams = (colorName, sizeLabel) => {
@@ -378,14 +408,18 @@ export function ProductDetail() {
         {/* IMAGE GALLERY WITH TOUCH/DRAG SWIPE & LIGHTBOX */}
         <div className="lg:col-span-6 space-y-4">
           <div
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onClick={() => setLightboxOpen(true)}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerAbort}
+            onPointerLeave={handlePointerAbort}
+            onDragStart={(e) => e.preventDefault()}
+            onClick={handleGalleryClick}
             className="relative cursor-zoom-in group rounded-3xl overflow-hidden border border-slate-200/80 bg-white shadow-sm touch-pan-y select-none"
             title="Swipe left/right or click to view fullscreen"
           >
             <ProductImage
+              key={selectedImage}
               src={currentImages?.[selectedImage] || currentImages}
               alt={product.name}
               variant="detail"
@@ -517,9 +551,12 @@ export function ProductDetail() {
             </div>
 
             <div
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerAbort}
+              onPointerLeave={handlePointerAbort}
+              onDragStart={(e) => e.preventDefault()}
               className="relative flex-1 flex items-center justify-center p-2 sm:p-4 my-auto w-full max-w-7xl mx-auto touch-pan-y select-none"
               onClick={(e) => e.stopPropagation()}
             >
@@ -535,6 +572,7 @@ export function ProductDetail() {
 
               <div className="max-w-4xl max-h-[75vh] flex items-center justify-center p-2 sm:p-4 rounded-3xl bg-white shadow-2xl border border-slate-800 overflow-hidden">
                 <ProductImage
+                  key={selectedImage}
                   src={currentImages?.[selectedImage] || currentImages}
                   alt={`${product.name} Fullscreen`}
                   variant="detail"
