@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShoppingBag, ShieldCheck, CreditCard, CheckCircle2, AlertCircle, ArrowLeft, Lock, Receipt, FileText, Truck, Zap, MapPin, Save } from 'lucide-react';
+import { ShoppingBag, ShieldCheck, CreditCard, CheckCircle2, AlertCircle, ArrowLeft, Lock, Receipt, FileText, Truck, Zap, MapPin, Save, Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -33,32 +33,34 @@ export function Checkout() {
   const [usedSavedAddr, setUsedSavedAddr] = useState(false);
   const [showSaveAddrPrompt, setShowSaveAddrPrompt] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
+  const [deletingAddressId, setDeletingAddressId] = useState(null);
 
   const [paymentMethod, setPaymentMethod] = useState('COD'); // COD | Razorpay
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrder, setCompletedOrder] = useState(null);
 
+  // Loads the account's saved addresses. Always read them back from the server so the
+  // ids used for selecting/deleting stay in sync with what is actually stored.
+  const loadSavedAddresses = useCallback(async () => {
+    try {
+      const res = await fetchApi('/auth/saved-address');
+      if (res && res.success) {
+        const list = res.addresses && res.addresses.length > 0 ? res.addresses : (res.savedAddress ? [res.savedAddress] : []);
+        setSavedAddressesList(list);
+        setSavedAddrData(list[0] || null);
+        setShowSavedAddrModal(false);
+      }
+    } catch (err) {
+      // Fail silently to empty form state
+      console.warn('Saved address fetch failed silently:', err?.message);
+    }
+  }, []);
+
   // Fetch saved addresses on mount if user is logged in
   useEffect(() => {
     if (!user) return; // Skip fetch for unauthenticated / guest users
-
-    const fetchSavedAddress = async () => {
-      try {
-        const res = await fetchApi('/auth/saved-address');
-        if (res && res.success && res.exists) {
-          const list = res.addresses && res.addresses.length > 0 ? res.addresses : (res.savedAddress ? [res.savedAddress] : []);
-          setSavedAddressesList(list);
-          setSavedAddrData(list[0] || null);
-          setShowSavedAddrModal(false);
-        }
-      } catch (err) {
-        // Fail silently to empty form state
-        console.warn('Saved address fetch failed silently:', err?.message);
-      }
-    };
-
-    fetchSavedAddress();
-  }, [user]);
+    loadSavedAddresses();
+  }, [user, loadSavedAddresses]);
 
   const handleSelectAddress = (item) => {
     if (!item) return;
@@ -80,6 +82,29 @@ export function Checkout() {
     setSelectedAddressId(item.id);
     setUsedSavedAddr(true);
     addToast(`Selected "${item.label || 'Saved Address'}"!`, 'success');
+  };
+
+  // Removes one saved address from the account (and from this list) permanently
+  const handleDeleteAddress = async (item) => {
+    if (!item || !item.id || deletingAddressId) return;
+    const label = item.label || 'this address';
+    if (!window.confirm(`Delete "${label}"? It will be removed from your saved addresses.`)) return;
+
+    try {
+      setDeletingAddressId(item.id);
+      await fetchApi(`/auth/saved-address/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
+
+      const remaining = savedAddressesList.filter((addr) => addr.id !== item.id);
+      setSavedAddressesList(remaining);
+      setSavedAddrData(remaining[0] || null);
+      if (selectedAddressId === item.id) setSelectedAddressId(null);
+      addToast('Address removed successfully!', 'success');
+      await loadSavedAddresses(); // re-read the list so the remaining ids stay valid
+    } catch (err) {
+      addToast(err.message || 'Failed to remove address', 'error');
+    } finally {
+      setDeletingAddressId(null);
+    }
   };
 
   const handleAcceptSavedAddress = () => {
@@ -526,7 +551,22 @@ export function Checkout() {
                               <span className="text-[10px] bg-wagh-teal text-white px-1.5 py-0.2 rounded-md font-mono-tag">Default</span>
                             )}
                           </span>
-                          {isSelected && <CheckCircle2 className="w-4 h-4 text-wagh-teal shrink-0" />}
+                          <span className="flex items-center gap-1 shrink-0">
+                            {isSelected && <CheckCircle2 className="w-4 h-4 text-wagh-teal shrink-0" />}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteAddress(item);
+                              }}
+                              disabled={deletingAddressId === item.id}
+                              className="p-1 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                              aria-label={`Delete address ${item.label || 'Saved Address'}`}
+                              title="Delete this address"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
                         </div>
                         <p className="line-clamp-1 font-semibold text-slate-800">{item.line1 || item.street}</p>
                         {item.line2 && <p className="line-clamp-1 text-[11px] text-slate-500">{item.line2}</p>}

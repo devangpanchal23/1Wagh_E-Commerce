@@ -16,6 +16,7 @@ const {
   sendEmailOtp,
   getSavedAddress,
   updateSavedAddress,
+  deleteSavedAddress,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
@@ -66,5 +67,6 @@ router.post('/profile/email/verify-otp', protect, verifyOtp);
 // Saved Address endpoints
 router.get('/saved-address', protect, getSavedAddress);
 router.put('/saved-address', protect, updateSavedAddress);
+router.delete('/saved-address/:id', protect, deleteSavedAddress);
 
 module.exports = router;

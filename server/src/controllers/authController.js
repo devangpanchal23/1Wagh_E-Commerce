@@ -699,12 +699,24 @@ exports.sendEmailOtp = async (req, res, next) => {
   }
 };
 
+// Identifies an address by its content so the same place is recognised across
+// the address book, the profile's saved address and past orders.
+const buildAddressKey = (addr) => {
+  if (!addr) return '';
+  const line = String(addr.line1 || addr.street || '').trim().toLowerCase();
+  const city = String(addr.city || '').trim().toLowerCase();
+  const pincode = String(addr.pincode || '').trim().toLowerCase();
+  if (!line && !city && !pincode) return '';
+  return `${line}|${city}|${pincode}`;
+};
+
 // GET /api/v1/auth/saved-address
 exports.getSavedAddress = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id).select('name mobileNumber savedAddress addresses').lean();
+    const user = await User.findById(req.user._id).select('name mobileNumber savedAddress addresses hiddenAddressKeys').lean();
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
+    const hiddenKeys = new Set(Array.isArray(user.hiddenAddressKeys) ? user.hiddenAddressKeys : []);
     const allAddresses = [];
     if (user.addresses && Array.isArray(user.addresses) && user.addresses.length > 0) {
       user.addresses.forEach((addr, idx) => {
@@ -712,7 +724,9 @@ exports.getSavedAddress = async (req, res, next) => {
           const l1 = addr.line1 || addr.street || '';
           const l2 = addr.line2 || '';
           allAddresses.push({
-            id: addr.id || `addr_book_${idx}`,
+            // Prefer a stable id: the entry's own id, else its subdocument _id. The
+            // positional fallback only covers legacy entries that have neither.
+            id: addr.id || (addr._id ? String(addr._id) : `addr_book_${idx}`),
             label: addr.label || 'Address Book',
             fullName: user.name || '',
             mobileNumber: addr.phone || user.mobileNumber || '',
@@ -759,6 +773,7 @@ exports.getSavedAddress = async (req, res, next) => {
 
     pastOrders.forEach((order, idx) => {
       if (order && order.shippingAddress && (order.shippingAddress.line1 || order.shippingAddress.street || order.shippingAddress.city)) {
+        if (hiddenKeys.has(buildAddressKey(order.shippingAddress))) return;
         const l1 = order.shippingAddress.line1 || order.shippingAddress.street || '';
         const l2 = order.shippingAddress.line2 || '';
         const existsInList = allAddresses.some(a => a.line1 === l1 && a.city === order.shippingAddress.city);
@@ -815,11 +830,71 @@ exports.updateSavedAddress = async (req, res, next) => {
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { $set: { savedAddress: newSavedAddress } },
+      // Saving an address explicitly undoes any earlier deletion of the same one
+      { $set: { savedAddress: newSavedAddress }, $pull: { hiddenAddressKeys: buildAddressKey(newSavedAddress) } },
       { new: true, runValidators: false }
     ).select('savedAddress').lean();
 
     return res.json({ success: true, message: 'Saved address updated successfully', savedAddress: user.savedAddress });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /api/v1/auth/saved-address/:id
+// Removes one entry from the checkout address list. The id is the one returned by
+// getSavedAddress, which tells us where the address actually lives.
+exports.deleteSavedAddress = async (req, res, next) => {
+  try {
+    const addressId = String(req.params.id || '').trim();
+    if (!addressId) {
+      return res.status(400).json({ success: false, message: 'Address id is required.' });
+    }
+
+    const user = await User.findById(req.user._id).select('savedAddress addresses').lean();
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // The profile's saved address is a single field, so it is cleared instead of pulled.
+    if (addressId === 'saved_profile_addr') {
+      const key = buildAddressKey(user.savedAddress);
+      const update = { $unset: { savedAddress: '' } };
+      if (key) update.$addToSet = { hiddenAddressKeys: key };
+      await User.updateOne({ _id: req.user._id }, update);
+      return res.json({ success: true, message: 'Address removed successfully', id: addressId });
+    }
+
+    // Suggestions built from past orders: hide the suggestion, never edit the order itself.
+    if (addressId.startsWith('past_order_')) {
+      const orderId = addressId.slice('past_order_'.length);
+      if (!/^[0-9a-fA-F]{24}$/.test(orderId)) {
+        return res.status(404).json({ success: false, message: 'Address not found' });
+      }
+      const order = await Order.findOne({ _id: orderId, user: req.user._id }).select('shippingAddress').lean();
+      const key = buildAddressKey(order && order.shippingAddress);
+      if (!key) return res.status(404).json({ success: false, message: 'Address not found' });
+      await User.updateOne({ _id: req.user._id }, { $addToSet: { hiddenAddressKeys: key } });
+      return res.json({ success: true, message: 'Address removed successfully', id: addressId });
+    }
+
+    // Address book entry, matched by its own id, its subdocument _id, or the legacy positional id.
+    const addresses = Array.isArray(user.addresses) ? user.addresses : [];
+    let index = addresses.findIndex((addr) => addr && (
+      (addr.id && addr.id === addressId) || (addr._id && String(addr._id) === addressId)
+    ));
+    if (index === -1) {
+      const fallback = /^addr_book_(\d+)$/.exec(addressId);
+      if (fallback) index = Number(fallback[1]);
+    }
+    if (index < 0 || index >= addresses.length) {
+      return res.status(404).json({ success: false, message: 'Address not found' });
+    }
+
+    const key = buildAddressKey(addresses[index]);
+    const update = { $set: { addresses: addresses.filter((_, idx) => idx !== index) } };
+    if (key) update.$addToSet = { hiddenAddressKeys: key };
+    await User.updateOne({ _id: req.user._id }, update, { runValidators: false });
+
+    return res.json({ success: true, message: 'Address removed successfully', id: addressId });
   } catch (error) {
     next(error);
   }

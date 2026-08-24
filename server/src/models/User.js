@@ -125,6 +125,12 @@ const userSchema = new mongoose.Schema({
     pincode: { type: String, default: '' },
     updatedAt: { type: Date, default: Date.now }
   },
+  // Address suggestions the user deleted at checkout, keyed by "line1|city|pincode".
+  // Used to stop past-order addresses from being suggested again without touching order history.
+  hiddenAddressKeys: {
+    type: [String],
+    default: [],
+  },
 }, {
   timestamps: true,
 });
