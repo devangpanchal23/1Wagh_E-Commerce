@@ -4,9 +4,31 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const Category = require('../models/Category');
+const AdminConfig = require('../models/AdminConfig');
 const { resolveCategoryId } = require('../utils/categoryResolver');
 const cache = require('../utils/cache');
 const { buildXlsxBuffer, XLSX_CONTENT_TYPE } = require('../utils/xlsxWriter');
+
+// Helper to get or lazy-seed AdminConfig document in MongoDB
+const getOrInitAdminConfig = async () => {
+  let config = await AdminConfig.findOne();
+  if (!config) {
+    const defaultUsername = process.env.ADMIN_USERNAME || 'admin';
+    const envHash = process.env.ADMIN_PASSWORD_HASH;
+    const defaultPassword = process.env.ADMIN_PASSWORD || 'admin2026';
+
+    let hashToUse = envHash;
+    if (!hashToUse) {
+      hashToUse = await bcrypt.hash(defaultPassword, 10);
+    }
+
+    config = await AdminConfig.create({
+      username: defaultUsername,
+      passwordHash: hashToUse,
+    });
+  }
+  return config;
+};
 
 // @desc    Admin authentication with username & password
 // @route   POST /api/v1/admin/login
@@ -21,31 +43,20 @@ exports.adminLogin = async (req, res, next) => {
       });
     }
 
-    const expectedUsername = process.env.ADMIN_USERNAME || 'admin';
-    const envPasswordHash = process.env.ADMIN_PASSWORD_HASH;
-    const envPlainPassword = process.env.ADMIN_PASSWORD || 'admin2026';
+    const config = await getOrInitAdminConfig();
 
-    if (username.trim() !== expectedUsername) {
+    if (username.trim() !== config.username) {
       return res.status(401).json({
         success: false,
         message: 'Invalid admin username or password',
       });
     }
 
-    let isMatch = false;
+    let isMatch = await bcrypt.compare(password.trim(), config.passwordHash);
 
-    // Check against bcrypt hash if available
-    if (envPasswordHash) {
-      try {
-        isMatch = await bcrypt.compare(password.trim(), envPasswordHash);
-      } catch (err) {
-        isMatch = false;
-      }
-    }
-
-    // Fallback to plain env password check if hash comparison wasn't successful
-    if (!isMatch && envPlainPassword) {
-      isMatch = password.trim() === envPlainPassword.trim();
+    // Fallback check against plain env password if initial seed hash didn't match
+    if (!isMatch && process.env.ADMIN_PASSWORD) {
+      isMatch = password.trim() === process.env.ADMIN_PASSWORD.trim();
     }
 
     if (!isMatch) {
@@ -58,7 +69,7 @@ exports.adminLogin = async (req, res, next) => {
     const adminSecret = process.env.ADMIN_JWT_SECRET || 'wagh_admin_dedicated_jwt_secret_key_2026_secure';
     const token = jwt.sign(
       {
-        username: expectedUsername,
+        username: config.username,
         role: 'admin',
         type: 'admin_session',
       },
@@ -71,10 +82,99 @@ exports.adminLogin = async (req, res, next) => {
       token,
       expiresIn: 8 * 3600,
       admin: {
-        username: expectedUsername,
+        username: config.username,
         role: 'admin',
       },
       message: 'Admin authentication successful',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update admin username and/or password
+// @route   PUT /api/v1/admin/credentials
+exports.updateAdminCredentials = async (req, res, next) => {
+  try {
+    const { currentPassword, newUsername, newPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is required to authorize credential changes',
+      });
+    }
+
+    const config = await getOrInitAdminConfig();
+
+    // Verify current password first
+    let isMatch = await bcrypt.compare(currentPassword.trim(), config.passwordHash);
+    if (!isMatch && process.env.ADMIN_PASSWORD) {
+      isMatch = currentPassword.trim() === process.env.ADMIN_PASSWORD.trim();
+    }
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect. Credential update denied.',
+      });
+    }
+
+    let updated = false;
+
+    // Update username if provided
+    if (newUsername && newUsername.trim()) {
+      if (newUsername.trim().length < 3) {
+        return res.status(400).json({
+          success: false,
+          message: 'New admin username must be at least 3 characters long',
+        });
+      }
+      config.username = newUsername.trim();
+      updated = true;
+    }
+
+    // Update password if provided
+    if (newPassword && newPassword.trim()) {
+      if (newPassword.trim().length < 4) {
+        return res.status(400).json({
+          success: false,
+          message: 'New admin password must be at least 4 characters long',
+        });
+      }
+      config.passwordHash = await bcrypt.hash(newPassword.trim(), 10);
+      updated = true;
+    }
+
+    if (!updated) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a new username or new password to update',
+      });
+    }
+
+    await config.save();
+
+    // Re-issue JWT token with updated admin info
+    const adminSecret = process.env.ADMIN_JWT_SECRET || 'wagh_admin_dedicated_jwt_secret_key_2026_secure';
+    const newToken = jwt.sign(
+      {
+        username: config.username,
+        role: 'admin',
+        type: 'admin_session',
+      },
+      adminSecret,
+      { expiresIn: '8h' }
+    );
+
+    return res.status(200).json({
+      success: true,
+      token: newToken,
+      admin: {
+        username: config.username,
+        role: 'admin',
+      },
+      message: 'Admin credentials updated successfully!',
     });
   } catch (error) {
     next(error);

@@ -7,6 +7,7 @@ const {
   adminLogin,
   adminLogout,
   verifyAdminSession,
+  updateAdminCredentials,
   getAdminStats,
   getAdminOrders,
   updateAdminOrderStatus,
@@ -71,6 +72,7 @@ router.post('/logout', adminLogout);
 router.use(verifyAdminToken);
 
 router.get('/verify', verifyAdminSession);
+router.put('/credentials', updateAdminCredentials);
 router.get('/stats', getAdminStats);
 router.get('/orders', getAdminOrders);
 router.put('/orders/:id/status', updateAdminOrderStatus);

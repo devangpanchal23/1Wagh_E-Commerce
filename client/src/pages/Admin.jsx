@@ -4,7 +4,7 @@ import {
   ShieldAlert, ShieldCheck, Lock, Key, Package, ShoppingBag, Users, DollarSign,
   Plus, Edit, Trash2, CheckCircle2, AlertCircle, LogOut, Calendar, Filter,
   Clock, TrendingUp, Search, ChevronDown, ChevronRight, CheckCircle, Truck, XCircle, X, Check, Ruler,
-  Upload, Image as ImageIcon, Layers, Grid, ArrowUp, ArrowDown, FileText, List, Table, Crop, RefreshCw, HardDrive, Eye
+  Upload, Image as ImageIcon, Layers, Grid, ArrowUp, ArrowDown, FileText, List, Table, Crop, RefreshCw, HardDrive, Eye, EyeOff
 } from 'lucide-react';
 
 import { useToast } from '../context/ToastContext';
@@ -203,6 +203,75 @@ export function Admin() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryDesc, setNewCategoryDesc] = useState('');
   const [creatingCategory, setCreatingCategory] = useState(false);
+
+  // Change Admin Credentials Modal State
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [currentAdminPassword, setCurrentAdminPassword] = useState('');
+  const [newAdminUsername, setNewAdminUsername] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
+  const [showCurrPw, setShowCurrPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [updatingCredentials, setUpdatingCredentials] = useState(false);
+
+  const handleUpdateCredentials = async (e) => {
+    e.preventDefault();
+    if (!currentAdminPassword) {
+      addToast('Current password is required to authorize credential changes', 'error');
+      return;
+    }
+    if (!newAdminUsername.trim() && !newAdminPassword) {
+      addToast('Please provide a new username or new password to update', 'error');
+      return;
+    }
+    if (newAdminUsername.trim() && newAdminUsername.trim().length < 3) {
+      addToast('New username must be at least 3 characters', 'error');
+      return;
+    }
+    if (newAdminPassword) {
+      if (newAdminPassword.length < 4) {
+        addToast('New password must be at least 4 characters', 'error');
+        return;
+      }
+      if (newAdminPassword !== confirmAdminPassword) {
+        addToast('New passwords do not match', 'error');
+        return;
+      }
+    }
+
+    try {
+      setUpdatingCredentials(true);
+      const res = await fetchAdminApi('/admin/credentials', {
+        method: 'PUT',
+        body: JSON.stringify({
+          currentPassword: currentAdminPassword.trim(),
+          newUsername: newAdminUsername.trim() || undefined,
+          newPassword: newAdminPassword ? newAdminPassword.trim() : undefined,
+        }),
+      });
+
+      if (res && res.success) {
+        if (res.token) {
+          if (localStorage.getItem('wagh_admin_token')) {
+            localStorage.setItem('wagh_admin_token', res.token);
+          } else {
+            sessionStorage.setItem('wagh_admin_token', res.token);
+          }
+        }
+        addToast(res.message || 'Admin credentials updated successfully!', 'success');
+        setShowCredentialsModal(false);
+        setCurrentAdminPassword('');
+        setNewAdminUsername('');
+        setNewAdminPassword('');
+        setConfirmAdminPassword('');
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to update admin credentials', 'error');
+    } finally {
+      setUpdatingCredentials(false);
+    }
+  };
 
   const handleCreateCategory = async (e) => {
     e.preventDefault();
@@ -875,6 +944,15 @@ export function Admin() {
           >
             <Tag className="w-4 h-4 text-amber-400" />
             <span>Manage Categories ({categories.length})</span>
+          </button>
+
+          <button
+            onClick={() => setShowCredentialsModal(true)}
+            className="px-4 py-2.5 rounded-full bg-slate-800 text-white font-bold text-xs hover:bg-slate-700 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+            title="Change Admin Username & Password"
+          >
+            <Key className="w-4 h-4 text-emerald-400" />
+            <span>Admin Settings</span>
           </button>
 
           <button
@@ -2624,6 +2702,157 @@ export function Admin() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* CHANGE ADMIN CREDENTIALS MODAL */}
+      {showCredentialsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-5 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-wagh-teal/10 text-wagh-teal flex items-center justify-center font-bold">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-editorial text-lg font-bold text-slate-900">Change Admin Credentials</h3>
+                  <p className="text-xs text-slate-500 font-mono-tag">Update username and/or password</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCredentialsModal(false);
+                  setCurrentAdminPassword('');
+                  setNewAdminUsername('');
+                  setNewAdminPassword('');
+                  setConfirmAdminPassword('');
+                }}
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateCredentials} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono-tag font-bold text-slate-700 mb-1">
+                  New Admin Username (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter new username (or leave blank)"
+                  value={newAdminUsername}
+                  onChange={(e) => setNewAdminUsername(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-sm font-mono-tag focus:outline-none focus:ring-2 focus:ring-wagh-teal"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono-tag font-bold text-slate-700 mb-1">
+                  Current Admin Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCurrPw ? 'text' : 'password'}
+                    required
+                    placeholder="Enter current password to authorize"
+                    value={currentAdminPassword}
+                    onChange={(e) => setCurrentAdminPassword(e.target.value)}
+                    className="w-full p-3 pr-10 rounded-xl border border-slate-200 text-sm font-mono-tag focus:outline-none focus:ring-2 focus:ring-wagh-teal"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrPw(!showCurrPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1"
+                    aria-label={showCurrPw ? 'Hide password' : 'Show password'}
+                  >
+                    {showCurrPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 space-y-4">
+                <div>
+                  <label className="block text-xs font-mono-tag font-bold text-slate-700 mb-1">
+                    New Admin Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPw ? 'text' : 'password'}
+                      placeholder="Enter new password (or leave blank)"
+                      value={newAdminPassword}
+                      onChange={(e) => setNewAdminPassword(e.target.value)}
+                      className="w-full p-3 pr-10 rounded-xl border border-slate-200 text-sm font-mono-tag focus:outline-none focus:ring-2 focus:ring-wagh-teal"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPw(!showNewPw)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1"
+                      aria-label={showNewPw ? 'Hide password' : 'Show password'}
+                    >
+                      {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {newAdminPassword && (
+                  <div>
+                    <label className="block text-xs font-mono-tag font-bold text-slate-700 mb-1">
+                      Confirm New Password <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPw ? 'text' : 'password'}
+                        required={!!newAdminPassword}
+                        placeholder="Re-enter new password"
+                        value={confirmAdminPassword}
+                        onChange={(e) => setConfirmAdminPassword(e.target.value)}
+                        className="w-full p-3 pr-10 rounded-xl border border-slate-200 text-sm font-mono-tag focus:outline-none focus:ring-2 focus:ring-wagh-teal"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPw(!showConfirmPw)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1"
+                        aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCredentialsModal(false);
+                    setCurrentAdminPassword('');
+                    setNewAdminUsername('');
+                    setNewAdminPassword('');
+                    setConfirmAdminPassword('');
+                  }}
+                  className="px-4 py-2.5 rounded-full border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingCredentials}
+                  className="px-6 py-2.5 rounded-full bg-wagh-teal text-white font-bold text-xs hover:bg-wagh-teal-dark transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-md"
+                >
+                  {updatingCredentials ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Updating...</span>
+                    </>
+                  ) : (
+                    <span>Save Credentials</span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
