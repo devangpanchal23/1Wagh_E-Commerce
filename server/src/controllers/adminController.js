@@ -476,14 +476,25 @@ exports.bulkDeleteAdminProducts = async (req, res, next) => {
       });
     }
 
+    try {
+      const mockData = require('../utils/mockData');
+      if (Array.isArray(mockData.mockProducts) && mockData.mockProducts.length > 0) {
+        for (let i = mockData.mockProducts.length - 1; i >= 0; i--) {
+          if (productIds.includes(String(mockData.mockProducts[i]._id))) {
+            mockData.mockProducts.splice(i, 1);
+          }
+        }
+      }
+    } catch (_) {}
+
     const result = await Product.deleteMany({ _id: { $in: productIds } });
 
     cache.invalidate('products:', 'product:');
 
     res.json({
       success: true,
-      deletedCount: result.deletedCount,
-      message: `${result.deletedCount} products deleted successfully`,
+      deletedCount: result.deletedCount || 0,
+      message: `${result.deletedCount || productIds.length} products deleted successfully`,
     });
   } catch (error) {
     next(error);
@@ -494,14 +505,21 @@ exports.bulkDeleteAdminProducts = async (req, res, next) => {
 // @route   DELETE /api/v1/admin/products/all
 exports.deleteAllAdminProducts = async (req, res, next) => {
   try {
+    try {
+      const mockData = require('../utils/mockData');
+      if (Array.isArray(mockData.mockProducts)) {
+        mockData.mockProducts.length = 0;
+      }
+    } catch (_) {}
+
     const result = await Product.deleteMany({});
 
     cache.invalidate('products:', 'product:');
 
     res.json({
       success: true,
-      deletedCount: result.deletedCount,
-      message: `All ${result.deletedCount} products deleted from catalog`,
+      deletedCount: result.deletedCount || 0,
+      message: 'All products deleted from catalog successfully',
     });
   } catch (error) {
     next(error);

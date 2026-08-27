@@ -143,6 +143,12 @@ export async function fetchAdminApi(endpoint, options = {}) {
       }
       throw new Error(data.message || 'Admin request failed');
     }
+
+    const method = (options.method || 'GET').toUpperCase();
+    if (method !== 'GET') {
+      invalidatePublicReadCache('GET:/products', 'GET:/categories');
+    }
+
     return data;
   } catch (err) {
     console.warn(`Admin API Error [${endpoint}]:`, err.message);

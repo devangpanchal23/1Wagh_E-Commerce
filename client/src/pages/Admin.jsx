@@ -247,6 +247,7 @@ export function Admin() {
       const res = await fetchAdminApi('/admin/products/all', { method: 'DELETE' });
       if (res && res.success) {
         addToast(res.message || 'All products deleted from catalog', 'success');
+        setProducts([]);
         setSelectedProductIds([]);
         loadAdminData();
       }
@@ -276,6 +277,7 @@ export function Admin() {
 
       if (res && res.success) {
         addToast(res.message || `${selectedProductIds.length} products deleted successfully`, 'success');
+        setProducts((prev) => prev.filter((p) => !selectedProductIds.includes(p._id)));
         setSelectedProductIds([]);
         loadAdminData();
       }
