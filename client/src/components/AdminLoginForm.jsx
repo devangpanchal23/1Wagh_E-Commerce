@@ -106,6 +106,7 @@ export function AdminLoginForm({ onLoginSuccess }) {
               <input
                 type="text"
                 autoComplete="username"
+                placeholder="username"
                 value={username}
                 onChange={(e) => {
                   setUsername(e.target.value);
@@ -135,6 +136,7 @@ export function AdminLoginForm({ onLoginSuccess }) {
               <input
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
+                placeholder="password"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);

@@ -180,7 +180,7 @@ export function Contact() {
                   <input
                     type="text"
                     required
-                    placeholder="Devang Panchal"
+                    placeholder="Full Name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full p-3 rounded-xl border border-wagh-border text-sm focus:outline-none focus:ring-2 focus:ring-wagh-teal"
@@ -192,7 +192,7 @@ export function Contact() {
                   <input
                     type="email"
                     required
-                    placeholder="devang@example.com"
+                    placeholder="your email address"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full p-3 rounded-xl border border-wagh-border text-sm focus:outline-none focus:ring-2 focus:ring-wagh-teal"
@@ -202,10 +202,10 @@ export function Contact() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono-tag font-bold text-wagh-dark mb-1">Phone (Optional)</label>
+                  <label className="block text-xs font-mono-tag font-bold text-wagh-dark mb-1">Phone</label>
                   <input
                     type="text"
-                    placeholder="+91 98765 43210"
+                    placeholder="Phone Number"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full p-3 rounded-xl border border-wagh-border text-sm focus:outline-none focus:ring-2 focus:ring-wagh-teal"
