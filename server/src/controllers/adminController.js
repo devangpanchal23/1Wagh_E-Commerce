@@ -464,6 +464,50 @@ exports.deleteAdminProduct = async (req, res, next) => {
   }
 };
 
+// @desc    Bulk delete selected products (admin)
+// @route   POST /api/v1/admin/products/bulk-delete
+exports.bulkDeleteAdminProducts = async (req, res, next) => {
+  try {
+    const { productIds } = req.body;
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select at least one product to delete',
+      });
+    }
+
+    const result = await Product.deleteMany({ _id: { $in: productIds } });
+
+    cache.invalidate('products:', 'product:');
+
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount,
+      message: `${result.deletedCount} products deleted successfully`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete ALL products from catalog (admin)
+// @route   DELETE /api/v1/admin/products/all
+exports.deleteAllAdminProducts = async (req, res, next) => {
+  try {
+    const result = await Product.deleteMany({});
+
+    cache.invalidate('products:', 'product:');
+
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount,
+      message: `All ${result.deletedCount} products deleted from catalog`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get admin categories
 // @route   GET /api/v1/admin/categories
 exports.getAdminCategories = async (req, res, next) => {

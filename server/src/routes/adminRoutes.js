@@ -15,6 +15,8 @@ const {
   createAdminProduct,
   updateAdminProduct,
   deleteAdminProduct,
+  bulkDeleteAdminProducts,
+  deleteAllAdminProducts,
   getAdminCategories,
   createAdminCategory,
   deleteAdminCategory,
@@ -79,6 +81,8 @@ router.put('/orders/:id/status', updateAdminOrderStatus);
 
 router.get('/products', getAdminProducts);
 router.post('/products', createAdminProduct);
+router.delete('/products/all', deleteAllAdminProducts);
+router.post('/products/bulk-delete', bulkDeleteAdminProducts);
 router.put('/products/:id', updateAdminProduct);
 router.delete('/products/:id', deleteAdminProduct);
 

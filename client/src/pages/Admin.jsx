@@ -215,6 +215,77 @@ export function Admin() {
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [updatingCredentials, setUpdatingCredentials] = useState(false);
 
+  // Product Selection & Bulk Action State
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+
+  const handleSelectAllProducts = (e) => {
+    if (e.target.checked) {
+      setSelectedProductIds(products.map((p) => p._id));
+    } else {
+      setSelectedProductIds([]);
+    }
+  };
+
+  const handleSelectProduct = (id) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteAllProducts = async () => {
+    if (products.length === 0) {
+      addToast('No products in catalog to delete', 'info');
+      return;
+    }
+
+    if (!window.confirm(`⚠️ DANGER: Are you sure you want to delete ALL ${products.length} products from the catalog? This action CANNOT be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetchAdminApi('/admin/products/all', { method: 'DELETE' });
+      if (res && res.success) {
+        addToast(res.message || 'All products deleted from catalog', 'success');
+        setSelectedProductIds([]);
+        loadAdminData();
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to delete all products', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDeleteProducts = async () => {
+    if (selectedProductIds.length === 0) {
+      addToast('Please select at least one product to delete', 'info');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete the ${selectedProductIds.length} selected product(s)? Unselected products will remain unchanged.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetchAdminApi('/admin/products/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ productIds: selectedProductIds }),
+      });
+
+      if (res && res.success) {
+        addToast(res.message || `${selectedProductIds.length} products deleted successfully`, 'success');
+        setSelectedProductIds([]);
+        loadAdminData();
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to bulk delete products', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdateCredentials = async (e) => {
     e.preventDefault();
     if (!currentAdminPassword) {
@@ -1322,11 +1393,68 @@ export function Admin() {
 
           {/* TAB 3: PRODUCTS CATALOG CRUD */}
           {activeTab === 'products' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
+              {/* Products Toolbar & Bulk Actions */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-slate-800 text-sm font-sans">
+                    Catalog Inventory ({products.length} Products)
+                  </span>
+                  {selectedProductIds.length > 0 && (
+                    <span className="px-2.5 py-1 rounded-full bg-wagh-teal/10 text-wagh-teal font-mono-tag font-bold text-xs border border-wagh-teal/20">
+                      {selectedProductIds.length} selected
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  {selectedProductIds.length > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleBulkDeleteProducts}
+                        className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        title="Delete selected products"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Selected ({selectedProductIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProductIds([])}
+                        className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-colors"
+                      >
+                        Deselect All
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleDeleteAllProducts}
+                    disabled={products.length === 0}
+                    className="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-40"
+                    title="Remove all products from catalog"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                    <span>Delete All Products</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="overflow-x-auto rounded-2xl border border-slate-200/80 shadow-xs">
                 <table className="w-full text-left text-xs font-sans">
                   <thead className="bg-slate-100/90 text-slate-600 font-bold uppercase text-[11px] tracking-wider border-b border-slate-200">
                     <tr>
+                      <th className="py-3.5 px-4 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={products.length > 0 && selectedProductIds.length === products.length}
+                          onChange={handleSelectAllProducts}
+                          className="w-4 h-4 rounded text-wagh-teal focus:ring-wagh-teal border-slate-300 cursor-pointer"
+                          title="Select all products"
+                        />
+                      </th>
                       <th className="py-3.5 px-4">Image</th>
                       <th className="py-3.5 px-4">Product Details</th>
                       <th className="py-3.5 px-4">Size & Dimensions</th>
@@ -1337,11 +1465,35 @@ export function Admin() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
-                    {products.map((p) => {
-                      const isLowStock = p.stock < 10;
-                      return (
-                        <tr key={p._id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4">
+                    {products.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="py-12 text-center text-slate-500 font-medium space-y-2">
+                          <Package className="w-8 h-8 text-slate-300 mx-auto" />
+                          <p>No products found in catalog.</p>
+                          <button
+                            type="button"
+                            onClick={openCreateModal}
+                            className="px-4 py-2 rounded-full bg-wagh-teal text-white text-xs font-bold shadow-xs hover:bg-wagh-teal-dark transition-all mt-2"
+                          >
+                            Add New Product
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
+                      products.map((p) => {
+                        const isLowStock = p.stock < 10;
+                        const isSelected = selectedProductIds.includes(p._id);
+                        return (
+                          <tr key={p._id} className={`hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-teal-50/40' : ''}`}>
+                            <td className="py-3 px-4 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleSelectProduct(p._id)}
+                                className="w-4 h-4 rounded text-wagh-teal focus:ring-wagh-teal border-slate-300 cursor-pointer"
+                              />
+                            </td>
+                            <td className="py-3 px-4">
                             <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs">
                               <img src={p.images?.[0]} alt={p.name} className="max-w-full max-h-full object-contain" />
                             </div>
@@ -1410,7 +1562,7 @@ export function Admin() {
                           </td>
                         </tr>
                       );
-                    })}
+                    }))}
                   </tbody>
                 </table>
               </div>
