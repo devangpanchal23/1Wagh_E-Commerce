@@ -1,5 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image as ImageIcon, AlertCircle } from 'lucide-react';
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80';
+
+// Helper to normalize and sanitize image URLs
+export const normalizeImageUrl = (raw) => {
+  if (!raw) return null;
+
+  let url = null;
+  if (typeof raw === 'string') {
+    url = raw;
+  } else if (typeof raw === 'object' && raw !== null) {
+    url = raw.url || raw.src || null;
+  }
+
+  if (!url || typeof url !== 'string') return null;
+  url = url.trim();
+  if (!url) return null;
+
+  // If it's a full URL containing /product-images/, convert to relative /product-images/...
+  if (url.includes('/product-images/')) {
+    const idx = url.indexOf('/product-images/');
+    return url.substring(idx);
+  }
+
+  // If it's product-images/... missing leading slash, add /
+  if (url.startsWith('product-images/')) {
+    return `/${url}`;
+  }
+
+  // If it's a localhost or backend upload link that has a .webp file name, redirect to /product-images/
+  if ((url.includes('localhost:') || url.includes('/uploads/')) && url.endsWith('.webp')) {
+    const filename = url.split('/').pop();
+    if (filename) return `/product-images/${filename}`;
+  }
+
+  return url;
+};
 
 export function ProductImage({
   src,
@@ -12,26 +49,39 @@ export function ProductImage({
   priority = false,
   ...props
 }) {
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
-
-  // Extract string URL if src is a string, object, or array of objects
-  const getSingleUrl = (item) => {
-    if (!item) return null;
-    if (typeof item === 'string') return item;
-    if (typeof item === 'object' && item.url) return item.url;
-    return null;
+  // Extract primary image candidate
+  const getInitialUrl = () => {
+    if (!src) return null;
+    if (Array.isArray(src) && src.length > 0) {
+      const primaryItem = src.find((i) => typeof i === 'object' && i?.isPrimary);
+      const chosen = primaryItem || src[0];
+      return normalizeImageUrl(chosen);
+    }
+    return normalizeImageUrl(src);
   };
 
-  let rawUrl = getSingleUrl(src);
+  const initialUrl = getInitialUrl() || FALLBACK_IMAGE;
+  const [currentSrc, setCurrentSrc] = useState(initialUrl);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const [hasFallenBack, setHasFallenBack] = useState(false);
 
-  if (!rawUrl && Array.isArray(src) && src.length > 0) {
-    const primaryItem = src.find(i => typeof i === 'object' && i?.isPrimary);
-    rawUrl = getSingleUrl(primaryItem) || getSingleUrl(src[0]);
-  }
+  useEffect(() => {
+    const newUrl = getInitialUrl() || FALLBACK_IMAGE;
+    setCurrentSrc(newUrl);
+    setLoaded(false);
+    setError(false);
+    setHasFallenBack(false);
+  }, [src]);
 
-  const fallbackUrl = 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80';
-  const imageUrl = rawUrl || fallbackUrl;
+  const handleError = () => {
+    if (!hasFallenBack && currentSrc !== FALLBACK_IMAGE) {
+      setHasFallenBack(true);
+      setCurrentSrc(FALLBACK_IMAGE);
+    } else {
+      setError(true);
+    }
+  };
 
   // Aspect ratio class mapping
   const aspectClassMap = {
@@ -49,7 +99,6 @@ export function ProductImage({
     card: 'p-0 rounded-2xl bg-white border border-slate-200/60 overflow-hidden',
     detail: 'p-0 rounded-3xl bg-white border border-slate-200/60 overflow-hidden shadow-2xs',
   };
-
 
   const containerPreset = variantStyles[variant] || variantStyles.card;
 
@@ -69,15 +118,13 @@ export function ProductImage({
       {/* Image element */}
       {!error ? (
         <img
-          src={imageUrl}
+          src={currentSrc}
           alt={alt}
           onLoad={() => setLoaded(true)}
-          onError={() => setError(true)}
+          onError={handleError}
           className={`max-h-full max-w-full object-contain transition-all duration-300 ${
             loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
           } ${imgClassName}`}
-          // The detail gallery can be the LCP element. Grid images remain lazy
-          // so off-screen product cards do not compete with initial rendering.
           loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : 'auto'}
           decoding="async"
@@ -91,3 +138,5 @@ export function ProductImage({
     </div>
   );
 }
+
+export default ProductImage;
