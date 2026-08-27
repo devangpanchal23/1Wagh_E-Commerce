@@ -1,93 +1,73 @@
-const catChargers = {
-  _id: '65a000000000000000000101',
-  name: 'Chargers & Adapters',
-  slug: 'chargers-adapters',
-  description: 'Super fast GaN chargers, PD adapters, and dual-port power bricks built for extreme speed.',
-  icon: 'Zap'
-};
-
-const catPowerBanks = {
-  _id: '65a000000000000000000102',
-  name: 'Power Banks',
-  slug: 'power-banks',
-  description: 'High-capacity, fast-charging portable power banks and MagSafe wireless battery packs.',
-  icon: 'BatteryCharging'
-};
-
-const catCables = {
-  _id: '65a000000000000000000103',
-  name: 'Cables & Connectors',
-  slug: 'cables-connectors',
-  description: 'Heavy-duty braided Type-C, Lightning, and 100W PD fast charging cables.',
-  icon: 'Cable'
-};
-
-const catAudio = {
-  _id: '65a000000000000000000104',
-  name: 'Audio & Wireless',
-  slug: 'audio-wireless',
-  description: 'TWS earbuds with ANC, Bluetooth neckbands, and premium acoustic accessories.',
-  icon: 'Headphones'
-};
-
-const mockCategories = [catChargers, catPowerBanks, catCables, catAudio];
+const mockCategories = [
+  {
+    _id: '65a000000000000000000001',
+    name: 'Chargers & Adapters',
+    slug: 'chargers-adapters',
+    description: 'Super fast GaN chargers, PD adapters, and dual-port power bricks built for extreme speed.',
+    icon: 'Zap'
+  },
+  {
+    _id: '65a000000000000000000002',
+    name: 'Power Banks',
+    slug: 'power-banks',
+    description: 'High-capacity, fast-charging portable power banks and MagSafe wireless battery packs.',
+    icon: 'BatteryCharging'
+  },
+  {
+    _id: '65a000000000000000000003',
+    name: 'Cables & Connectors',
+    slug: 'cables-connectors',
+    description: 'Heavy-duty braided Type-C, Lightning, and 100W PD fast charging cables.',
+    icon: 'Cable'
+  },
+  {
+    _id: '65a000000000000000000004',
+    name: 'Audio & Wireless',
+    slug: 'audio-wireless',
+    description: 'TWS earbuds with ANC, Bluetooth neckbands, and premium acoustic accessories.',
+    icon: 'Headphones'
+  }
+];
 
 const mockUsers = [
   {
     _id: '65b000000000000000000001',
     name: 'WAGH Admin',
     email: 'admin@wagh.com',
-    password: 'admin123password',
     role: 'admin',
-    addresses: [{
-      street: 'WAGH HQ, Tech Park, Block B',
-      city: 'Ahmedabad',
-      state: 'Gujarat',
-      pincode: '380015',
-      phone: '+91 90544 05305',
-      isDefault: true
-    }]
+    addresses: [{ street: 'WAGH HQ, Tech Park', city: 'Ahmedabad', state: 'Gujarat', pincode: '380015', phone: '+91 90544 05305', isDefault: true }]
   },
   {
     _id: '65b000000000000000000002',
     name: 'Devang Panchal',
     email: 'devang@example.com',
-    password: 'customer123password',
     role: 'customer',
-    addresses: [{
-      street: '42 Speed Avenue, Sector 4',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      pincode: '400001',
-      phone: '+91 98765 43210',
-      isDefault: true
-    }]
+    addresses: [{ street: '42 Speed Avenue', city: 'Mumbai', state: 'Maharashtra', pincode: '400001', phone: '+91 98765 43210', isDefault: true }]
   }
 ];
 
 const mockProducts = [
   {
     _id: '65c000000000000000000001',
-    name: 'WAGH Super Fast Charger 2.0 45W',
-    slug: 'wagh-super-fast-charger-45w',
-    description: 'Engineered for maximum power in a sleek, ultra-compact body. Features Super Fast Charging 2.0 protocol (PPS 45W) capable of boosting compatible phones up to 65% charge in just 25 minutes. Built with aerospace-grade thermal dissipation and 10-layer safety protection system.',
+    name: 'WAGH 45W Type-C Super Fast Charger',
+    slug: 'wagh-45w-type-c-super-fast-charger',
+    description: 'Engineered for maximum power in a sleek, ultra-compact body. Features Super Fast Charging 2.0 protocol (PPS 45W).',
     price: 749,
     mrp: 1499,
     images: [
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=800&auto=format&fit=crop&q=80'
+      '/product-images/45w-type-c-adopter-1.webp',
+      '/product-images/45w-type-c-adopter-2.webp',
+      '/product-images/45w-type-c-adopter-3.webp',
+      '/product-images/45w-type-c-adopter-4.webp'
     ],
-    category: catChargers,
+    category: '65a000000000000000000001',
     brand: 'WAGH',
     specs: {
       outputPower: '45W Max PPS / PD 3.0',
-      compatibility: 'Universal (Samsung SFC 2.0, iPhone 15/14, iPad, Mac, Pixel)',
-      cableLength: '1.2m Braided Type-C Included',
+      compatibility: 'Universal (Samsung SFC 2.0, iPhone, iPad, Mac, Pixel)',
       warranty: '6 Months Replacement Warranty',
-      color: 'Premium Deep Teal & Matte Gold',
-      material: 'Fireproof PC + Anodized Aluminum Rim'
+      color: 'Teal & Matte White',
+      material: 'Fireproof PC + Metal Accents'
     },
     stock: 150,
     ratingAvg: 4.9,
@@ -99,304 +79,300 @@ const mockProducts = [
   },
   {
     _id: '65c000000000000000000002',
-    name: 'WAGH GaN Power Duo 65W Dual Wall Charger',
-    slug: 'wagh-gan-power-duo-65w',
-    description: 'Next-generation Gallium Nitride (GaN III) technology allows dual high-speed charging for laptops and smartphones simultaneously. Extremely lightweight design with foldable AC pins.',
-    price: 1299,
-    mrp: 2499,
+    name: 'WAGH 25W VoltXpress PD Fast Charger',
+    slug: 'wagh-25w-voltxpress-pd-fast-charger',
+    description: 'High-speed 25W Power Delivery wall adapter designed for quick and efficient daily charging.',
+    price: 549,
+    mrp: 1099,
     images: [
-      'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80'
+      '/product-images/25w-voltxprees-pd-1.webp',
+      '/product-images/25w-voltxprees-pd-2.webp',
+      '/product-images/25w-voltxprees-pd-3.webp',
+      '/product-images/25w-voltxprees-pd-4.webp'
     ],
-    category: catChargers,
+    category: '65a000000000000000000001',
     brand: 'WAGH',
     specs: {
-      outputPower: '65W Total (USB-C 65W + USB-A 18W)',
-      compatibility: 'MacBook Air/Pro, iPhone, Android, Steam Deck',
+      outputPower: '25W Max Power Delivery',
+      compatibility: 'Type-C Smart Devices',
       warranty: '6 Months Warranty',
-      color: 'Stealth Black',
-      material: 'Gallium Nitride III Semiconductor'
+      color: 'Matte Black',
+      material: 'Fireproof PC'
     },
-    stock: 80,
+    stock: 120,
     ratingAvg: 4.8,
-    ratingCount: 88,
+    ratingCount: 95,
     isFeatured: true,
-    isNewArrival: true,
-    isBestSeller: false,
+    isNewArrival: false,
+    isBestSeller: true,
     createdAt: new Date('2026-07-19T10:00:00Z')
   },
   {
     _id: '65c000000000000000000003',
-    name: 'WAGH TitanPower 20,000mAh 22.5W Power Bank',
-    slug: 'wagh-titanpower-20000mah-power-bank',
-    description: 'Monstrous 20,000mAh Li-Polymer battery capacity capable of powering an average smartphone up to 4.5 times. Equipped with real-time LED digital percentage display and triple output ports.',
-    price: 1499,
-    mrp: 2999,
+    name: 'WAGH 25W PD Fast Wall Charger',
+    slug: 'wagh-25w-pd-fast-wall-charger',
+    description: 'Compact 25W USB-C power adapter providing stable and safe fast charging.',
+    price: 499,
+    mrp: 999,
     images: [
-      'https://images.unsplash.com/photo-1609592424074-67d7162629b3?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80'
+      '/product-images/25w-pd-1.webp',
+      '/product-images/25w-pd-2.webp',
+      '/product-images/25w-pd-3.webp',
+      '/product-images/25w-pd-4.webp'
     ],
-    category: catPowerBanks,
+    category: '65a000000000000000000001',
     brand: 'WAGH',
     specs: {
-      outputPower: '22.5W Fast Charge / 20W PD Type-C',
-      compatibility: 'Universal USB-A & USB-C Devices',
+      outputPower: '25W Type-C PD',
+      compatibility: 'Universal Smart Devices',
       warranty: '6 Months Warranty',
-      color: 'Deep Teal Metal Finish',
-      material: 'Textured Anti-scratch ABS Alloy'
+      color: 'Classic White',
+      material: 'ABS Alloy'
     },
-    stock: 110,
+    stock: 180,
     ratingAvg: 4.7,
-    ratingCount: 210,
-    isFeatured: true,
+    ratingCount: 88,
+    isFeatured: false,
     isNewArrival: false,
-    isBestSeller: true,
+    isBestSeller: false,
     createdAt: new Date('2026-07-18T10:00:00Z')
   },
   {
     _id: '65c000000000000000000004',
-    name: 'WAGH Magnetic MagSafe 10,000mAh Wireless Power Bank',
-    slug: 'wagh-magsafe-10000mah-power-bank',
-    description: 'Snap & Charge wirelessly with ultra-strong N52 neodymium magnetic lock. Supports 15W wireless fast charging and 20W PD wired pass-through charging with a metallic ring stand.',
+    name: 'WAGH 80W Super Charger Adapter',
+    slug: 'wagh-80w-super-charger-adapter',
+    description: 'Ultra-high output 80W super fast charging brick engineered for flagships and laptops.',
     price: 1199,
     mrp: 2299,
     images: [
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1609592424074-67d7162629b3?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80'
+      '/product-images/80w-super-charger-1.webp',
+      '/product-images/80w-super-charger-2.webp',
+      '/product-images/80w-super-charger-3.webp',
+      '/product-images/80w-super-charger-4.webp'
     ],
-    category: catPowerBanks,
+    category: '65a000000000000000000001',
     brand: 'WAGH',
     specs: {
-      outputPower: '15W MagSafe Wireless / 20W Type-C PD',
-      compatibility: 'iPhone 12/13/14/15/16 Series & Qi Android',
-      warranty: '6 Months Warranty',
-      color: 'Titanium Grey & Deep Teal',
-      material: 'Soft-Touch Matte Silicone & Aluminum Stand'
+      outputPower: '80W Super Flash Charge',
+      compatibility: 'Smartphones, Tablets & Laptops',
+      warranty: '6 Months Replacement Warranty',
+      color: 'Glossy White & Teal Trim',
+      material: 'Polycarbonate + Anodized Alloy'
     },
-    stock: 65,
+    stock: 90,
     ratingAvg: 4.9,
-    ratingCount: 76,
-    isFeatured: false,
+    ratingCount: 110,
+    isFeatured: true,
     isNewArrival: true,
     isBestSeller: true,
     createdAt: new Date('2026-07-17T10:00:00Z')
   },
   {
     _id: '65c000000000000000000005',
-    name: 'WAGH ArmorFlex Braided Type-C to Type-C 100W Cable (1.5m)',
-    slug: 'wagh-armorflex-100w-type-c-cable',
-    description: 'Indestructible double-braided nylon sleeve tested to withstand 30,000+ bends. Built-in E-Marker smart chip guarantees safe 100W Power Delivery and high-speed 480Mbps data transfer.',
-    price: 399,
-    mrp: 799,
+    name: 'WAGH 100W Phantom Neo GaN Adapter',
+    slug: 'wagh-100w-phantom-neo-gan-adapter',
+    description: 'Flagship GaN technology delivering 100W total output in a compact desktop-friendly footprint.',
+    price: 1999,
+    mrp: 3999,
     images: [
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1609592424074-67d7162629b3?w=800&auto=format&fit=crop&q=80'
+      '/product-images/100w-phantom-neo-adopter-1.webp',
+      '/product-images/100w-phantom-neo-adopter-2.webp',
+      '/product-images/100w-phantom-neo-adopter-3.webp',
+      '/product-images/100w-phantom-neo-adopter-4.webp'
     ],
-    category: catCables,
+    category: '65a000000000000000000001',
     brand: 'WAGH',
     specs: {
-      outputPower: '100W 5A Max Power Delivery',
-      cableLength: '1.5 Meters (5 Feet)',
-      compatibility: 'Type-C Laptops, Tablets, Smartphones',
+      outputPower: '100W Max GaN Output',
+      compatibility: 'MacBook Pro, Laptops, Flagship Phones',
       warranty: '6 Months Replacement Warranty',
-      color: 'Deep Teal Braided Weave',
-      material: 'Kevlar Reinforced Nylon Fiber'
+      color: 'Cyber Black',
+      material: 'GaN III Semiconductor'
     },
-    stock: 300,
-    ratingAvg: 4.8,
-    ratingCount: 310,
+    stock: 60,
+    ratingAvg: 5.0,
+    ratingCount: 64,
     isFeatured: true,
-    isNewArrival: false,
-    isBestSeller: true,
+    isNewArrival: true,
+    isBestSeller: false,
     createdAt: new Date('2026-07-16T10:00:00Z')
   },
   {
     _id: '65c000000000000000000006',
-    name: 'WAGH MFi Braided Lightning to USB-C Cable (1.2m)',
-    slug: 'wagh-lightning-to-usb-c-cable',
-    description: 'Apple MFi Certified fast charging cable designed to charge iPhones from 0 to 50% in 30 minutes when paired with a WAGH PD charger. Strain-relief joint architecture prevents fraying.',
-    price: 449,
-    mrp: 899,
+    name: 'WAGH 66W + 100W All-In-1 Super Adapter',
+    slug: 'wagh-66w-plus-100w-all-in-1-adapter',
+    description: 'Versatile multi-port charging solution supporting up to 100W combined power delivery.',
+    price: 1599,
+    mrp: 2999,
     images: [
-      'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80'
+      '/product-images/66w-plus-100w-all-in-1-adopter-1.webp',
+      '/product-images/66w-plus-100w-all-in-1-adopter-2.webp',
+      '/product-images/66w-plus-100w-all-in-1-adopter-3.webp',
+      '/product-images/66w-plus-100w-all-in-1-adopter-4.webp'
     ],
-    category: catCables,
+    category: '65a000000000000000000001',
     brand: 'WAGH',
     specs: {
-      outputPower: '27W Max iPhone PD Fast Charge',
-      cableLength: '1.2 Meters',
-      compatibility: 'iPhone 14/13/12/11, iPad, AirPods',
+      outputPower: '100W Max Multi-Port Output',
+      compatibility: 'Multi-device Universal Charging',
       warranty: '6 Months Warranty',
-      color: 'Off-White & Amber Gold Connectors',
-      material: 'Braided Nylon + Zinc Alloy Shell'
+      color: 'Metallic Gray',
+      material: 'Fireproof ABS'
     },
-    stock: 200,
-    ratingAvg: 4.9,
-    ratingCount: 165,
+    stock: 75,
+    ratingAvg: 4.8,
+    ratingCount: 52,
     isFeatured: false,
-    isNewArrival: false,
+    isNewArrival: true,
     isBestSeller: false,
     createdAt: new Date('2026-07-15T10:00:00Z')
   },
   {
     _id: '65c000000000000000000007',
-    name: 'WAGH Acoustic Pro TWS Active Noise Cancelling Earbuds',
-    slug: 'wagh-acoustic-pro-tws-earbuds',
-    description: 'Immerse yourself in rich, audiophile-grade sound with 32dB Active Noise Cancellation and 10mm Graphene Drivers. Enjoy up to 40 hours of playtime with the wireless charging case and quad MIC clear calls.',
-    price: 1799,
-    mrp: 3499,
+    name: 'WAGH Strom 10,000mAh Fast Charge Power Bank',
+    slug: 'wagh-strom-10000mah-power-bank',
+    description: 'High-density 10,000mAh portable battery pack with dual output and fast charging capability.',
+    price: 1199,
+    mrp: 2299,
     images: [
-      'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80'
+      '/product-images/strom-powerbank-1-10000mah.webp',
+      '/product-images/strom-powerbank-2-10000mah.webp',
+      '/product-images/strom-powerbank-3-10000mah.webp',
+      '/product-images/strom-powerbank-4-10000mah.webp'
     ],
-    category: catAudio,
+    category: '65a000000000000000000002',
     brand: 'WAGH',
     specs: {
-      outputPower: '32dB Hybrid ANC + ENC Quad Mic',
-      compatibility: 'Bluetooth 5.3 Universal (iOS & Android)',
-      batteryLife: '40 Hours Total with Charging Case',
-      warranty: '6 Months Replacement Warranty',
-      color: 'Teal Green Glass Metallic Case',
-      material: 'Ergonomic IPX5 Sweatproof Silicone'
+      outputPower: '22.5W Fast Charge / 20W PD',
+      compatibility: 'Smartphones & Accessories',
+      warranty: '6 Months Warranty',
+      color: 'Matte Teal',
+      material: 'Anti-scratch ABS Shell'
     },
-    stock: 95,
-    ratingAvg: 4.9,
-    ratingCount: 184,
+    stock: 110,
+    ratingAvg: 4.8,
+    ratingCount: 175,
     isFeatured: true,
-    isNewArrival: true,
+    isNewArrival: false,
     isBestSeller: true,
     createdAt: new Date('2026-07-14T10:00:00Z')
   },
   {
     _id: '65c000000000000000000008',
-    name: 'WAGH BassWave 30H Wireless Bluetooth Neckband',
-    slug: 'wagh-basswave-wireless-neckband',
-    description: 'Ultra-flexible silicone neckband with magnetic earbuds and 13mm dynamic titanium drivers for deep, thumping bass. Features ASAP Charge technology (10 min charge = 10 hrs playtime).',
-    price: 699,
-    mrp: 1499,
+    name: 'WAGH Liner 10,000mAh Sleek Power Bank',
+    slug: 'wagh-liner-10000mah-power-bank',
+    description: 'Ultra-slim linear design 10,000mAh power bank featuring LED power status indicators.',
+    price: 999,
+    mrp: 1999,
     images: [
-      'https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=800&auto=format&fit=crop&q=80'
+      '/product-images/liner-powerbank-1-10000mah.webp',
+      '/product-images/liner-powerbank-2-10000mah.webp',
+      '/product-images/liner-powerbank-3-10000mah.webp',
+      '/product-images/liner-powerbank-4-10000mah.webp'
     ],
-    category: catAudio,
+    category: '65a000000000000000000002',
     brand: 'WAGH',
     specs: {
-      outputPower: '13mm Titanium Drivers / ENC',
-      batteryLife: '30 Hours Playback / ASAP Fast Charge',
-      compatibility: 'Bluetooth v5.2 Dual Pairing',
+      outputPower: '20W PD Fast Charging',
+      compatibility: 'Universal Type-C & USB-A',
       warranty: '6 Months Warranty',
-      color: 'Matte Teal & Midnight Black',
-      material: 'Liquid Silicone Neckband'
+      color: 'Stealth Black',
+      material: 'Lightweight Polymer Alloy'
     },
-    stock: 140,
-    ratingAvg: 4.6,
-    ratingCount: 92,
+    stock: 130,
+    ratingAvg: 4.7,
+    ratingCount: 84,
     isFeatured: false,
-    isNewArrival: false,
+    isNewArrival: true,
     isBestSeller: false,
     createdAt: new Date('2026-07-13T10:00:00Z')
   },
   {
     _id: '65c000000000000000000009',
-    name: 'WAGH 3-in-1 Foldable Wireless Charging Station 15W',
-    slug: 'wagh-3-in-1-wireless-charging-stand',
-    description: 'Declutter your nightstand with a single ultra-sleek charging hub for your iPhone, Apple Watch, and AirPods simultaneously. Folds completely flat for travel.',
-    price: 1999,
-    mrp: 3999,
+    name: 'WAGH Mini 10,000mAh Compact Power Bank',
+    slug: 'wagh-mini-10000mah-power-bank',
+    description: 'Pocket-sized ultra-compact power bank designed for total portability without compromising power.',
+    price: 899,
+    mrp: 1799,
     images: [
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1609592424074-67d7162629b3?w=800&auto=format&fit=crop&q=80'
+      '/product-images/mini-powerbank-1-black.webp',
+      '/product-images/mini-powerbank-2-black.webp',
+      '/product-images/mini-powerbank-3-black.webp',
+      '/product-images/mini-powerbank-4-black.webp'
     ],
-    category: catChargers,
+    category: '65a000000000000000000002',
     brand: 'WAGH',
     specs: {
-      outputPower: '15W Phone + 5W AirPods + 3W Watch',
-      compatibility: 'Qi-enabled phones, Apple Watch, AirPods',
+      outputPower: '22.5W Quick Charge',
+      compatibility: 'Smartphones & Wearables',
       warranty: '6 Months Warranty',
-      color: 'Metallic Teal & Frosted Glass',
-      material: 'CNC Aluminum Base + Soft Rubber Pads'
+      color: 'Deep Black',
+      material: 'Textured Rubberized Polycarbonate'
     },
-    stock: 50,
-    ratingAvg: 4.9,
-    ratingCount: 53,
+    stock: 140,
+    ratingAvg: 4.8,
+    ratingCount: 96,
     isFeatured: true,
-    isNewArrival: true,
-    isBestSeller: false,
+    isNewArrival: false,
+    isBestSeller: true,
     createdAt: new Date('2026-07-12T10:00:00Z')
   },
   {
     _id: '65c000000000000000000010',
-    name: 'WAGH CyberCharge 100W GaN Desktop Super Station',
-    slug: 'wagh-cybercharge-100w-gan-station',
-    description: 'An ultra-powerful 4-port desktop GaN III charging station with intelligent power distribution and real-time LED wattage display. Powers two laptops simultaneously at high speed.',
-    price: 2999,
-    mrp: 5999,
+    name: 'WAGH Big 20,000mAh Heavy-Duty Power Bank',
+    slug: 'wagh-big-20000mah-power-bank',
+    description: 'Massive 20,000mAh capacity backup battery built to power laptops and phones for multiple days.',
+    price: 1499,
+    mrp: 2999,
     images: [
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=800&auto=format&fit=crop&q=80'
+      '/product-images/big-powerbank-1-black.webp',
+      '/product-images/big-powerbank-2-black.webp',
+      '/product-images/big-powerbank-3-black.webp',
+      '/product-images/big-powerbank-4-black.webp'
     ],
-    category: catChargers,
+    category: '65a000000000000000000002',
     brand: 'WAGH',
     specs: {
-      outputPower: '100W Max Total (2x USB-C + 2x USB-A)',
-      compatibility: 'MacBook Pro, Windows Laptops, iPad, iPhone, Galaxy',
+      outputPower: '22.5W Super Charge + 20W PD',
+      compatibility: 'Laptops, Tablets & Smartphones',
       warranty: '6 Months Replacement Warranty',
-      color: 'Cyber Matte Black & Gold',
-      material: 'Fireproof ABS + Anodized Alloy Rim'
+      color: 'Matte Black',
+      material: 'Heavy-Duty ABS Enclosure'
     },
-    stock: 75,
+    stock: 95,
     ratingAvg: 4.9,
-    ratingCount: 112,
+    ratingCount: 210,
     isFeatured: true,
-    isNewArrival: true,
+    isNewArrival: false,
     isBestSeller: true,
     createdAt: new Date('2026-07-11T10:00:00Z')
   },
   {
     _id: '65c000000000000000000011',
-    name: 'WAGH SonicPro Max Over-Ear Active Noise Cancelling Headphones',
-    slug: 'wagh-sonicpro-max-anc-headphones',
-    description: 'Audiophile-grade wireless headphones engineered with custom 40mm beryllium-coated drivers and 45dB hybrid adaptive ANC. Enjoy up to 60 hours of uninterrupted playback with spatial acoustic immersion.',
-    price: 3499,
-    mrp: 6999,
+    name: 'WAGH 120W Red Cable (Type-C to Type-C)',
+    slug: 'wagh-120w-red-cable-c-to-c',
+    description: 'Heavy-duty 120W max power delivery Type-C cable with signature red braided jacket.',
+    price: 399,
+    mrp: 799,
     images: [
-      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=800&auto=format&fit=crop&q=80'
+      '/product-images/120w-red-cable-c-to-c-1.webp',
+      '/product-images/120w-red-cable-c-to-c-2.webp',
+      '/product-images/120w-red-cable-c-to-c-3.webp',
+      '/product-images/120w-red-cable-c-to-c-4.webp'
     ],
-    category: catAudio,
+    category: '65a000000000000000000003',
     brand: 'WAGH',
     specs: {
-      outputPower: '40mm Hi-Res Drivers / 45dB Hybrid ANC',
-      batteryLife: '60 Hours Playtime (ANC Off) / 45 Hours (ANC On)',
-      compatibility: 'Bluetooth 5.3 + 3.5mm Wired Aux',
+      outputPower: '120W 6A Max Power Delivery',
+      cableLength: '1.2 Meters',
+      compatibility: 'Type-C Laptops, Tablets, Phones',
       warranty: '6 Months Warranty',
-      color: 'Midnight Black & Deep Teal Accents',
-      material: 'Memory Foam Earcups & Aluminum Headband'
+      color: 'Signature Red Braided',
+      material: 'Reinforced Nylon Weave'
     },
-    stock: 60,
+    stock: 250,
     ratingAvg: 4.9,
-    ratingCount: 89,
+    ratingCount: 160,
     isFeatured: true,
     isNewArrival: true,
     isBestSeller: true,
@@ -404,73 +380,401 @@ const mockProducts = [
   },
   {
     _id: '65c000000000000000000012',
-    name: 'WAGH SolarShield 25,000mAh Rugged Outdoor Power Bank',
-    slug: 'wagh-solarshield-25000mah-power-bank',
-    description: 'Built for extreme adventures, this rugged IP67 water and dust-resistant portable charger features a monocrystalline solar recharging panel, dual LED camping flashlights, and 30W USB-C Power Delivery.',
-    price: 2199,
-    mrp: 4499,
+    name: 'WAGH 120W Red Cable (USB to Type-C)',
+    slug: 'wagh-120w-red-cable-usb-to-c',
+    description: 'Ultra-durable 120W fast charging cable connecting standard USB-A to Type-C devices.',
+    price: 349,
+    mrp: 699,
     images: [
-      'https://images.unsplash.com/photo-1609592424074-67d7162629b3?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80'
+      '/product-images/120w-red-cable-usb-to-c-1.webp',
+      '/product-images/120w-red-cable-usb-to-c-2.webp',
+      '/product-images/120w-red-cable-usb-to-c-3.webp',
+      '/product-images/120w-red-cable-usb-to-c-4.webp'
     ],
-    category: catPowerBanks,
+    category: '65a000000000000000000003',
     brand: 'WAGH',
     specs: {
-      outputPower: '30W PD Type-C + 18W QC USB-A',
-      compatibility: 'Universal USB-C & USB-A Devices',
-      warranty: '6 Months Replacement Warranty',
-      color: 'Tactical Green & Matte Black',
-      material: 'Shockproof TPU Armor & Solar Shell'
+      outputPower: '120W Super Charge',
+      cableLength: '1.2 Meters',
+      compatibility: 'USB-A to Type-C Smart Devices',
+      warranty: '6 Months Warranty',
+      color: 'Signature Red Braided',
+      material: 'Tangle-Free Braided Nylon'
     },
-    stock: 85,
+    stock: 200,
     ratingAvg: 4.8,
-    ratingCount: 154,
-    isFeatured: true,
-    isNewArrival: true,
-    isBestSeller: false,
+    ratingCount: 135,
+    isFeatured: false,
+    isNewArrival: false,
+    isBestSeller: true,
     createdAt: new Date('2026-07-09T10:00:00Z')
   },
   {
     _id: '65c000000000000000000013',
-    name: 'WAGH MagDock Pro Smart Auto-Clamping Car Wireless Mount',
-    slug: 'wagh-magdock-pro-car-mount',
-    description: 'Smart motorized car phone holder with built-in infrared sensor for automatic opening and clamping. Delivers 15W Qi and MagSafe fast wireless charging with a 360-degree titanium swivel ball joint.',
-    price: 1599,
-    mrp: 3199,
+    name: 'WAGH GRIPP Heavy Duty Cable (Type-C to Type-C)',
+    slug: 'wagh-gripp-cable-c-to-c',
+    description: 'Tough strain-relief cable with ergonomic grip housing for long-lasting high-wattage charging.',
+    price: 449,
+    mrp: 899,
     images: [
-      'https://images.unsplash.com/photo-1622445268465-843dcb642733?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1609592424074-67d7162629b3?w=800&auto=format&fit=crop&q=80'
+      '/product-images/gripp-c-to-type-c-1-black.webp',
+      '/product-images/gripp-c-to-type-c-2-black.webp',
+      '/product-images/gripp-c-to-type-c-3-black.webp',
+      '/product-images/gripp-c-to-type-c-4-black.webp',
+      '/product-images/gripp-c-to-type-c-1-white.webp',
+      '/product-images/gripp-c-to-type-c-2-white.webp',
+      '/product-images/gripp-c-to-type-c-3-white.webp',
+      '/product-images/gripp-c-to-type-c-4-white.webp'
     ],
-    category: catChargers,
+    category: '65a000000000000000000003',
     brand: 'WAGH',
     specs: {
-      outputPower: '15W Wireless Fast Charge + QC 3.0 Adapter Included',
-      compatibility: 'MagSafe iPhone & Qi Wireless Android Phones',
+      outputPower: '100W PD Power Delivery',
+      cableLength: '1.5 Meters',
+      compatibility: 'Type-C Laptops & Phones',
       warranty: '6 Months Warranty',
-      color: 'Carbon Fiber Texture & Teal LED Ring',
-      material: 'Tempered Glass Face & Aluminum Clamp'
+      color: 'Black & White Variants',
+      material: 'Textured Grip TPU + Braided Core'
     },
-    stock: 120,
+    stock: 190,
+    ratingAvg: 4.9,
+    ratingCount: 145,
+    isFeatured: true,
+    isNewArrival: false,
+    isBestSeller: false,
+    createdAt: new Date('2026-07-08T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000014',
+    name: 'WAGH GRIPP Fast Charge Cable (USB to Type-C)',
+    slug: 'wagh-gripp-cable-usb-to-c',
+    description: 'Reinforced USB to Type-C fast charging cable featuring protective molded ends.',
+    price: 399,
+    mrp: 799,
+    images: [
+      '/product-images/gripp-usb-to-type-c-1-black.webp',
+      '/product-images/gripp-usb-to-type-c-2-black.webp',
+      '/product-images/gripp-usb-to-type-c-3-black.webp',
+      '/product-images/gripp-usb-to-type-c-4-black.webp',
+      '/product-images/gripp-usb-to-type-c-1-white.webp',
+      '/product-images/gripp-usb-to-type-c-2-white.webp',
+      '/product-images/gripp-usb-to-type-c-3-white.webp',
+      '/product-images/gripp-usb-to-type-c-4-white.webp'
+    ],
+    category: '65a000000000000000000003',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '65W Max Charge',
+      cableLength: '1.2 Meters',
+      compatibility: 'USB-A to Type-C Smart Devices',
+      warranty: '6 Months Warranty',
+      color: 'Black & White Variants',
+      material: 'Flexible TPU Shielding'
+    },
+    stock: 210,
     ratingAvg: 4.7,
-    ratingCount: 203,
+    ratingCount: 110,
+    isFeatured: false,
+    isNewArrival: false,
+    isBestSeller: false,
+    createdAt: new Date('2026-07-07T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000015',
+    name: 'WAGH Hunter Series 1M Cable (USB to Type-C)',
+    slug: 'wagh-hunter-1m-usb-to-c',
+    description: 'Sleek 1-meter charging cable engineered for everyday quick charging and reliable data transfer.',
+    price: 299,
+    mrp: 599,
+    images: [
+      '/product-images/hunter-1m-type-usb-to-c-1.webp',
+      '/product-images/hunter-1m-type-usb-to-c-2.webp',
+      '/product-images/hunter-1m-type-usb-to-c-3.webp',
+      '/product-images/hunter-1m-type-usb-to-c-4.webp'
+    ],
+    category: '65a000000000000000000003',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '3.1A Fast Charging',
+      cableLength: '1.0 Meter',
+      compatibility: 'Type-C Android Devices',
+      warranty: '6 Months Warranty',
+      color: 'Matte Black',
+      material: 'High-Density PVC'
+    },
+    stock: 300,
+    ratingAvg: 4.8,
+    ratingCount: 220,
+    isFeatured: false,
+    isNewArrival: false,
+    isBestSeller: true,
+    createdAt: new Date('2026-07-06T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000016',
+    name: 'WAGH Hunter Series 1M Cable (USB to Lightning)',
+    slug: 'wagh-hunter-1m-usb-to-lightning',
+    description: 'Certified USB to Lightning cable providing steady power delivery for iPhones and iPads.',
+    price: 349,
+    mrp: 699,
+    images: [
+      '/product-images/hunter-1m-type-usb-to-l-1.webp',
+      '/product-images/hunter-1m-type-usb-to-l-2.webp',
+      '/product-images/hunter-1m-type-usb-to-l-3.webp',
+      '/product-images/hunter-1m-type-usb-to-l-4.webp'
+    ],
+    category: '65a000000000000000000003',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '2.4A iPhone Fast Charge',
+      cableLength: '1.0 Meter',
+      compatibility: 'iPhone, iPad & AirPods',
+      warranty: '6 Months Warranty',
+      color: 'Classic Black',
+      material: 'Reinforced Strain Relief'
+    },
+    stock: 220,
+    ratingAvg: 4.8,
+    ratingCount: 140,
+    isFeatured: false,
+    isNewArrival: false,
+    isBestSeller: false,
+    createdAt: new Date('2026-07-05T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000017',
+    name: 'WAGH Hunter Series 1M Cable (USB to Micro)',
+    slug: 'wagh-hunter-1m-usb-to-micro',
+    description: 'Durable Micro-USB charging cable for legacy accessories, power banks, and speakers.',
+    price: 249,
+    mrp: 499,
+    images: [
+      '/product-images/hunter-1m-type-usb-to-micro-1.webp',
+      '/product-images/hunter-1m-type-usb-to-micro-2.webp',
+      '/product-images/hunter-1m-type-usb-to-micro-3.webp',
+      '/product-images/hunter-1m-type-usb-to-micro-4.webp'
+    ],
+    category: '65a000000000000000000003',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '2.4A Micro Charging',
+      cableLength: '1.0 Meter',
+      compatibility: 'Micro-USB Devices',
+      warranty: '6 Months Warranty',
+      color: 'Stealth Black',
+      material: 'PVC Shielding'
+    },
+    stock: 180,
+    ratingAvg: 4.6,
+    ratingCount: 75,
+    isFeatured: false,
+    isNewArrival: false,
+    isBestSeller: false,
+    createdAt: new Date('2026-07-04T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000018',
+    name: 'WAGH Hunter Series 2M Extra Long Cable (Type-C to Type-C)',
+    slug: 'wagh-hunter-2m-c-to-c',
+    description: 'Extra-long 2-meter Type-C to Type-C cable giving freedom to charge comfortably anywhere.',
+    price: 449,
+    mrp: 899,
+    images: [
+      '/product-images/hunter-2m-type-c-to-c-1.webp',
+      '/product-images/hunter-2m-type-c-to-c-2.webp',
+      '/product-images/hunter-2m-type-c-to-c-3.webp',
+      '/product-images/hunter-2m-type-c-to-c-4.webp'
+    ],
+    category: '65a000000000000000000003',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '60W Power Delivery',
+      cableLength: '2.0 Meters (6.6 Feet)',
+      compatibility: 'Type-C Laptops, Tablets & Phones',
+      warranty: '6 Months Warranty',
+      color: 'Black',
+      material: 'Heavy-Duty Braided Nylon'
+    },
+    stock: 160,
+    ratingAvg: 4.9,
+    ratingCount: 115,
+    isFeatured: true,
+    isNewArrival: true,
+    isBestSeller: false,
+    createdAt: new Date('2026-07-03T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000019',
+    name: 'WAGH Hunter Series 2M Extra Long Cable (Type-C to Lightning)',
+    slug: 'wagh-hunter-2m-c-to-lightning',
+    description: 'Extended 2-meter Type-C to Lightning cable supporting fast iPhone PD charging over distance.',
+    price: 499,
+    mrp: 999,
+    images: [
+      '/product-images/hunter-2m-type-c-to-l-1.webp',
+      '/product-images/hunter-2m-type-c-to-l-2.webp',
+      '/product-images/hunter-2m-type-c-to-l-3.webp',
+      '/product-images/hunter-2m-type-c-to-l-4.webp'
+    ],
+    category: '65a000000000000000000003',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '27W Max iPhone PD',
+      cableLength: '2.0 Meters (6.6 Feet)',
+      compatibility: 'iPhone & iPad Series',
+      warranty: '6 Months Warranty',
+      color: 'Black',
+      material: 'Braided Nylon'
+    },
+    stock: 140,
+    ratingAvg: 4.9,
+    ratingCount: 98,
     isFeatured: false,
     isNewArrival: true,
+    isBestSeller: false,
+    createdAt: new Date('2026-07-02T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000020',
+    name: 'WAGH Rootz Series Cable (Type-C to Type-C)',
+    slug: 'wagh-rootz-c-to-c',
+    description: 'Minimalist clean aesthetic cable engineered for optimal power transfer and safety.',
+    price: 349,
+    mrp: 699,
+    images: [
+      '/product-images/rootz-type-c-to-c-1.webp',
+      '/product-images/rootz-type-c-to-c-2.webp',
+      '/product-images/rootz-type-c-to-c-3.webp',
+      '/product-images/rootz-type-c-to-c-4.webp'
+    ],
+    category: '65a000000000000000000003',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '60W PD Charge',
+      cableLength: '1.2 Meters',
+      compatibility: 'Type-C Smart Devices',
+      warranty: '6 Months Warranty',
+      color: 'Teal & White',
+      material: 'TPE Soft Finish'
+    },
+    stock: 175,
+    ratingAvg: 4.7,
+    ratingCount: 82,
+    isFeatured: false,
+    isNewArrival: false,
+    isBestSeller: false,
+    createdAt: new Date('2026-07-01T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000021',
+    name: 'WAGH Rootz Series Cable (Type-C to Lightning)',
+    slug: 'wagh-rootz-c-to-lightning',
+    description: 'Elegant Type-C to Lightning cable providing fast charging for Apple smartphones.',
+    price: 399,
+    mrp: 799,
+    images: [
+      '/product-images/rootz-type-c-to-l-1.webp',
+      '/product-images/rootz-type-c-to-l-2.webp',
+      '/product-images/rootz-type-c-to-l-3.webp',
+      '/product-images/rootz-type-c-to-l-4.webp'
+    ],
+    category: '65a000000000000000000003',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '27W Fast PD',
+      cableLength: '1.2 Meters',
+      compatibility: 'iPhone & iOS Devices',
+      warranty: '6 Months Warranty',
+      color: 'Teal & White',
+      material: 'Soft Polymer Outer'
+    },
+    stock: 150,
+    ratingAvg: 4.8,
+    ratingCount: 79,
+    isFeatured: false,
+    isNewArrival: false,
+    isBestSeller: false,
+    createdAt: new Date('2026-06-30T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000022',
+    name: 'WAGH Bullet Z2 Wireless Bluetooth Neckband',
+    slug: 'wagh-bullet-z2-wireless-neckband',
+    description: 'Flexible ergonomic neckband with magnetic earbuds, dynamic titanium drivers, and fast charge (10 min = 10 hrs). Available in Black, Green, and Red options.',
+    price: 699,
+    mrp: 1499,
+    images: [
+      '/product-images/bullet-z2-neckband-1-black.webp',
+      '/product-images/bullet-z2-neckband-2-black.webp',
+      '/product-images/bullet-z2-neckband-3-black.webp',
+      '/product-images/bullet-z2-neckband-4-black.webp',
+      '/product-images/bullet-z2-neckband-1-green.webp',
+      '/product-images/bullet-z2-neckband-2-green.webp',
+      '/product-images/bullet-z2-neckband-3-green.webp',
+      '/product-images/bullet-z2-neckband-4-green.webp',
+      '/product-images/bullet-z2-neckband-1-red.webp',
+      '/product-images/bullet-z2-neckband-2-red.webp',
+      '/product-images/bullet-z2-neckband-3-red.webp',
+      '/product-images/bullet-z2-neckband-4-red.webp'
+    ],
+    category: '65a000000000000000000004',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '13mm Drivers / ENC Call Mic',
+      batteryLife: '30 Hours Playback',
+      compatibility: 'Bluetooth v5.2 Dual Pairing',
+      warranty: '6 Months Warranty',
+      color: 'Black, Green, Red',
+      material: 'Liquid Silicone Neckband'
+    },
+    stock: 200,
+    ratingAvg: 4.8,
+    ratingCount: 195,
+    isFeatured: true,
+    isNewArrival: true,
     isBestSeller: true,
-    createdAt: new Date('2026-07-08T10:00:00Z')
+    createdAt: new Date('2026-06-29T10:00:00Z')
+  },
+  {
+    _id: '65c000000000000000000023',
+    name: 'WAGH PowerBuds True Wireless Stereo Earbuds',
+    slug: 'wagh-powerbuds-tws-earbuds',
+    description: 'Premium TWS earbuds featuring crystal-clear acoustics, low latency gaming mode, and 30-hour total battery life with wireless charging case.',
+    price: 1299,
+    mrp: 2499,
+    images: [
+      '/product-images/powerbuds-1.webp',
+      '/product-images/powerbuds-2.webp',
+      '/product-images/powerbuds-3.webp',
+      '/product-images/powerbuds-4.webp'
+    ],
+    category: '65a000000000000000000004',
+    brand: 'WAGH',
+    specs: {
+      outputPower: '10mm Graphene Drivers + ENC',
+      batteryLife: '30 Hours Total Playtime',
+      compatibility: 'Bluetooth 5.3 Universal',
+      warranty: '6 Months Replacement Warranty',
+      color: 'Metallic Teal & Glass Case',
+      material: 'IPX5 Sweatproof Earbuds'
+    },
+    stock: 120,
+    ratingAvg: 4.9,
+    ratingCount: 184,
+    isFeatured: true,
+    isNewArrival: true,
+    isBestSeller: true,
+    createdAt: new Date('2026-06-28T10:00:00Z')
   }
 ];
 
 const mockOrders = [
   {
     _id: '65d000000000000000000001',
-    orderId: 'WAGH-847291',
+    orderId: 'WAGH-08261001',
     user: { _id: '65b000000000000000000002', name: 'Devang Panchal', email: 'devang@example.com' },
     items: [
-      { name: 'WAGH Super Fast Charger 2.0 45W', price: 749, quantity: 2, image: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=600&auto=format&fit=crop' }
+      { name: 'WAGH 45W Type-C Super Fast Charger', price: 749, quantity: 2, image: '/product-images/45w-type-c-adopter-1.webp' }
     ],
     shippingAddress: { street: '42 Speed Avenue, Sector 4', city: 'Mumbai', state: 'Maharashtra', pincode: '400001', phone: '+91 98765 43210' },
     paymentMethod: 'COD',
@@ -484,10 +788,10 @@ const mockOrders = [
   },
   {
     _id: '65d000000000000000000002',
-    orderId: 'WAGH-592304',
+    orderId: 'WAGH-08261002',
     user: { _id: '65b000000000000000000002', name: 'Devang Panchal', email: 'devang@example.com' },
     items: [
-      { name: 'WAGH TitanPower 20,000mAh 22.5W Power Bank', price: 1499, quantity: 1, image: 'https://images.unsplash.com/photo-1609592424074-67d7162629b3?w=600&auto=format&fit=crop' }
+      { name: 'WAGH Big 20,000mAh Heavy-Duty Power Bank', price: 1499, quantity: 1, image: '/product-images/big-powerbank-1-black.webp' }
     ],
     shippingAddress: { street: '42 Speed Avenue, Sector 4', city: 'Mumbai', state: 'Maharashtra', pincode: '400001', phone: '+91 98765 43210' },
     paymentMethod: 'Razorpay',
