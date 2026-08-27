@@ -242,19 +242,29 @@ export function Admin() {
       return;
     }
 
+    const previousProducts = [...products];
+    setProducts([]);
+    setSelectedProductIds([]);
+
     try {
-      setLoading(true);
-      const res = await fetchAdminApi('/admin/products/all', { method: 'DELETE' });
+      let res;
+      try {
+        res = await fetchAdminApi('/admin/products/all', { method: 'DELETE' });
+      } catch (_) {
+        res = await fetchAdminApi('/admin/products/delete-all', { method: 'POST' });
+      }
+
       if (res && res.success) {
         addToast(res.message || 'All products deleted from catalog', 'success');
-        setProducts([]);
-        setSelectedProductIds([]);
-        loadAdminData();
+      } else {
+        setProducts(previousProducts);
+        addToast('Failed to delete products from server', 'error');
       }
     } catch (err) {
+      setProducts(previousProducts);
       addToast(err.message || 'Failed to delete all products', 'error');
     } finally {
-      setLoading(false);
+      loadAdminData();
     }
   };
 
@@ -264,27 +274,34 @@ export function Admin() {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete the ${selectedProductIds.length} selected product(s)? Unselected products will remain unchanged.`)) {
+    const idsToDelete = [...selectedProductIds];
+    if (!window.confirm(`Are you sure you want to delete the ${idsToDelete.length} selected product(s)? Unselected products will remain unchanged.`)) {
       return;
     }
 
+    const previousProducts = [...products];
+    setProducts((prev) => prev.filter((p) => !idsToDelete.includes(p._id)));
+    setSelectedProductIds([]);
+
     try {
-      setLoading(true);
       const res = await fetchAdminApi('/admin/products/bulk-delete', {
         method: 'POST',
-        body: JSON.stringify({ productIds: selectedProductIds }),
+        body: JSON.stringify({ productIds: idsToDelete }),
       });
 
       if (res && res.success) {
-        addToast(res.message || `${selectedProductIds.length} products deleted successfully`, 'success');
-        setProducts((prev) => prev.filter((p) => !selectedProductIds.includes(p._id)));
-        setSelectedProductIds([]);
-        loadAdminData();
+        addToast(res.message || `${idsToDelete.length} products deleted successfully`, 'success');
+      } else {
+        setProducts(previousProducts);
+        setSelectedProductIds(idsToDelete);
+        addToast('Failed to delete selected products', 'error');
       }
     } catch (err) {
+      setProducts(previousProducts);
+      setSelectedProductIds(idsToDelete);
       addToast(err.message || 'Failed to bulk delete products', 'error');
     } finally {
-      setLoading(false);
+      loadAdminData();
     }
   };
 

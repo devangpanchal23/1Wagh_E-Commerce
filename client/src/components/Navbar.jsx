@@ -36,6 +36,23 @@ export function Navbar({ onOpenSearch, onOpenMobileDrawer, onOpenAuthModal }) {
   };
 
 
+  const handleLogoClick = (e) => {
+    e.preventDefault();
+    if (location.pathname === '/') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate('/');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  };
+
+  const handleNavLinkClick = (e, path) => {
+    if (location.pathname === path) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <header className={`sticky top-0 z-40 transition-all duration-300 print:hidden no-print ${scrolled ? 'glass-nav shadow-md border-b border-wagh-border/60 py-3' : 'bg-wagh-bg py-4 border-b border-wagh-border/40'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
@@ -50,13 +67,18 @@ export function Navbar({ onOpenSearch, onOpenMobileDrawer, onOpenAuthModal }) {
             <Menu className="w-6 h-6" />
           </button>
 
-          <Link to="/" className="flex items-center group py-1">
+          <a 
+            href="/"
+            onClick={handleLogoClick}
+            className="flex items-center group py-1 cursor-pointer"
+            title="Go to Home & Scroll to Top"
+          >
             <img 
               src="/assets/branding/wagh-logo-2x.png" 
               alt="WAGH Mobile Accessories" 
               className="h-8 sm:h-10 w-auto object-contain group-hover:scale-105 transition-transform" 
             />
-          </Link>
+          </a>
         </div>
 
         {/* Center Nav Links (Desktop) */}
@@ -67,6 +89,7 @@ export function Navbar({ onOpenSearch, onOpenMobileDrawer, onOpenAuthModal }) {
               <Link
                 key={link.name}
                 to={link.path}
+                onClick={(e) => handleNavLinkClick(e, link.path)}
                 className={`text-sm font-semibold tracking-wide transition-all relative py-1 ${
                   isActive ? 'text-wagh-teal' : 'text-wagh-dark/80 hover:text-wagh-teal'
                 }`}

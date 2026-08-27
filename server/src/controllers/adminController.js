@@ -487,7 +487,16 @@ exports.bulkDeleteAdminProducts = async (req, res, next) => {
       }
     } catch (_) {}
 
-    const result = await Product.deleteMany({ _id: { $in: productIds } });
+    const validObjectIds = productIds
+      .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    const result = await Product.deleteMany({
+      $or: [
+        { _id: { $in: validObjectIds } },
+        { _id: { $in: productIds } },
+      ],
+    });
 
     cache.invalidate('products:', 'product:');
 

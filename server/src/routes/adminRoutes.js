@@ -82,7 +82,10 @@ router.put('/orders/:id/status', updateAdminOrderStatus);
 router.get('/products', getAdminProducts);
 router.post('/products', createAdminProduct);
 router.delete('/products/all', deleteAllAdminProducts);
+router.post('/products/all', deleteAllAdminProducts);
+router.post('/products/delete-all', deleteAllAdminProducts);
 router.post('/products/bulk-delete', bulkDeleteAdminProducts);
+router.delete('/products/bulk-delete', bulkDeleteAdminProducts);
 router.put('/products/:id', updateAdminProduct);
 router.delete('/products/:id', deleteAdminProduct);
 
