@@ -70,38 +70,49 @@ export function ProductImage({
     return normalizeImageUrl(src);
   };
 
-  const initialUrl = getInitialUrl() || FALLBACK_IMAGE;
-  const [currentSrc, setCurrentSrc] = useState(initialUrl);
+  const resolvedUrl = getInitialUrl() || FALLBACK_IMAGE;
+  const [currentSrc, setCurrentSrc] = useState(resolvedUrl);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [hasFallenBack, setHasFallenBack] = useState(false);
   const timeoutRef = useRef(null);
+  const imgRef = useRef(null);
 
+  // Keyed on the resolved URL string, not the `src` prop itself: callers pass a
+  // fresh object/array literal on most renders (`src={p.images?.[0]}`), so
+  // depending on that identity reset the element back to its loading state
+  // every time the parent re-rendered, and the picture never settled.
   useEffect(() => {
-    const newUrl = getInitialUrl() || FALLBACK_IMAGE;
-    setCurrentSrc(newUrl);
+    setCurrentSrc(resolvedUrl);
     setLoaded(false);
     setError(false);
     setHasFallenBack(false);
-  }, [src]);
+  }, [resolvedUrl]);
+
+  // A cached image can finish decoding before React attaches onLoad, in which
+  // case that event never fires: the <img> sits at opacity-0 behind the
+  // skeleton until some unrelated interaction re-renders it, which is why a
+  // picture would only appear once it had been clicked. Ask the DOM node
+  // directly instead of waiting for an event that has already been missed.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth > 0) setLoaded(true);
+  }, [currentSrc]);
 
   // Belt-and-braces: if neither onLoad nor onError fires within the timeout
   // (a hung/blocked request), stop showing an indefinite loading skeleton.
   useEffect(() => {
     if (loaded || error) return undefined;
     timeoutRef.current = setTimeout(() => {
-      setError((prevError) => {
-        if (prevError) return prevError;
-        if (!hasFallenBack && currentSrc !== FALLBACK_IMAGE) {
-          setHasFallenBack(true);
-          setCurrentSrc(FALLBACK_IMAGE);
-          return false;
-        }
-        return true;
-      });
+      // Only stop showing the skeleton — deliberately leave `src` alone. This
+      // used to swap in the placeholder, which cancelled the real download, so
+      // a photo that was merely slow (rather than broken) was replaced by the
+      // grey fallback and never recovered. A genuinely broken URL still fires
+      // onError, which is what the fallback is for.
+      setLoaded(true);
     }, LOAD_TIMEOUT_MS);
     return () => clearTimeout(timeoutRef.current);
-  }, [currentSrc, loaded, error, hasFallenBack]);
+  }, [currentSrc, loaded, error]);
 
   const handleError = () => {
     if (!hasFallenBack && currentSrc !== FALLBACK_IMAGE) {
@@ -147,6 +158,7 @@ export function ProductImage({
       {/* Image element */}
       {!error ? (
         <img
+          ref={imgRef}
           src={currentSrc}
           alt={alt}
           onLoad={() => setLoaded(true)}

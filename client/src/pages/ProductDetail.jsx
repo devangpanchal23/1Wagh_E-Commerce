@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingBag, Zap, ShieldCheck, Truck, RefreshCw, Heart, ChevronRight, ChevronLeft,
-  Maximize2, X, Ruler, Star, CheckCircle2, FileText, MessageSquare, Info, Award
+  Maximize2, X, Ruler, Star, CheckCircle2, FileText, MessageSquare, Info, Award, ChevronUp
 } from 'lucide-react';
 import { RatingStars } from '../components/RatingStars';
 import { ProductImage } from '../components/ProductImage';
@@ -271,11 +271,30 @@ export function ProductDetail() {
     await loadProductNode(sibling._id);
   };
 
+  // Steps back up to the parent from the same option row the siblings live in,
+  // so moving between a parent and its children is symmetric: drilling in and
+  // climbing back out are both one click, without reaching for the breadcrumb.
+  const handleSelectParent = async () => {
+    const parentId = product?.parentId?._id;
+    if (!parentId) return;
+    const loaded = await loadProductNode(parentId);
+    if (loaded) setBreadcrumbStack((prev) => prev.slice(0, -1));
+  };
+
   // Jumps back up to an ancestor node from the breadcrumb strip.
   const handleBreadcrumbClick = async (entry, idx) => {
     const loaded = await loadProductNode(entry._id);
     if (loaded) setBreadcrumbStack((prev) => prev.slice(0, idx));
   };
+
+  // Everything the shopper can switch to at this level of the tree: the parent
+  // first (so climbing back out is always available), then every product that
+  // shares that parent — which includes this one, and is what marks it active.
+  const parentOption = product?.parentId?._id ? product.parentId : null;
+  const optionEntries = [
+    ...(parentOption ? [{ node: parentOption, isParent: true }] : []),
+    ...(Array.isArray(product?.siblings) ? product.siblings : []).map((node) => ({ node, isParent: false })),
+  ];
 
   // Derived variant computations
   const hasVariants = Boolean(product?.hasVariants && Array.isArray(product.variants) && product.variants.length > 0);
@@ -740,33 +759,45 @@ export function ProductDetail() {
           {/* SIBLING OPTIONS — other products under the same parent (e.g. "C to C"
               vs "C to i"), shown as an image-swatch row exactly like the
               color/size selectors below, so switching never loses the option list. */}
-          {Array.isArray(product.siblings) && product.siblings.length > 1 && (
+          {optionEntries.length > 1 && (
             <div className="space-y-2.5 p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 shadow-2xs">
               <span className="font-mono-tag text-xs font-bold uppercase text-slate-700 tracking-wider">
                 OPTION: <span className="text-[#0f4b3f] font-extrabold">{product.shortName || product.name}</span>
               </span>
               <div className="flex items-start gap-3 flex-wrap">
-                {product.siblings.map((sibling) => {
-                  const isSelected = sibling._id === product._id;
-                  const siblingOutOfStock = (sibling.stock || 0) <= 0;
-                  const label = sibling.shortName || sibling.name;
+                {optionEntries.map(({ node, isParent }) => {
+                  const isSelected = !isParent && node._id === product._id;
+                  const nodeOutOfStock = (node.stock || 0) <= 0;
+                  const label = node.shortName || node.name;
+                  const disabled = nodeOutOfStock && !isSelected && !isParent;
                   return (
                     <button
-                      key={sibling._id}
+                      key={node._id}
                       type="button"
-                      disabled={siblingOutOfStock && !isSelected}
-                      onClick={() => handleSelectSibling(sibling)}
-                      title={siblingOutOfStock ? `${label} - Out of Stock` : `Select: ${label}`}
+                      disabled={disabled}
+                      onClick={() => (isParent ? handleSelectParent() : handleSelectSibling(node))}
+                      title={
+                        isParent
+                          ? `Back to ${label}`
+                          : nodeOutOfStock ? `${label} - Out of Stock` : `Select: ${label}`
+                      }
                       className={`flex flex-col items-center gap-1.5 w-[4.5rem] ${
-                        siblingOutOfStock && !isSelected ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                        disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
                       }`}
                     >
-                      <div className={`w-16 h-16 rounded-xl overflow-hidden border-2 bg-white transition-all ${
+                      <div className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 bg-white transition-all ${
                         isSelected
                           ? 'border-[#0f4b3f] ring-2 ring-[#0f4b3f]/20 shadow-xs scale-105'
-                          : 'border-slate-200 hover:border-slate-400'
+                          : isParent
+                            ? 'border-[#0f4b3f]/40 border-dashed hover:border-[#0f4b3f]'
+                            : 'border-slate-200 hover:border-slate-400'
                       }`}>
-                        <ProductImage src={sibling.images?.[0]} alt={label} variant="thumbnail" className="w-full h-full border-0 rounded-none" />
+                        <ProductImage src={node.images?.[0]} alt={label} variant="thumbnail" className="w-full h-full border-0 rounded-none" />
+                        {isParent && (
+                          <span className="absolute top-0 left-0 bg-[#0f4b3f] text-white rounded-br-lg px-1 leading-none py-0.5">
+                            <ChevronUp className="w-2.5 h-2.5" strokeWidth={3} />
+                          </span>
+                        )}
                       </div>
                       <span className={`text-[10px] font-bold text-center leading-tight truncate w-full ${isSelected ? 'text-[#0f4b3f]' : 'text-slate-700'}`}>
                         {label}

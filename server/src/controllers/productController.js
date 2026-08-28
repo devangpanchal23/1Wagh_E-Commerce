@@ -157,17 +157,21 @@ exports.getProductById = async (req, res, next) => {
 
     // Both lookups hit a unique index (_id or slug); `.lean()` avoids hydrating
     // the full document including its `sections` subdocument array.
+    const NESTED_OPTION_PROJECTION = 'name shortName slug price mrp images stock sku hasVariants';
+
     const filter = id.match(/^[0-9a-fA-F]{24}$/) ? { _id: id } : { slug: id };
+    // The parent is populated with the same fields as the children/siblings so
+    // the detail page can offer it as one more option in the switcher row —
+    // otherwise a shopper who drills into a child can only get back up via the
+    // breadcrumb, and the parent silently disappears from the option list.
     const product = await Product.findOne(filter)
       .populate('category', 'name slug')
-      .populate('parentId', 'name slug')
+      .populate('parentId', NESTED_OPTION_PROJECTION)
       .lean();
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
-
-    const NESTED_OPTION_PROJECTION = 'name shortName slug price mrp images stock sku hasVariants';
 
     // Direct children only — each is a full independent Product document, so
     // the detail page can let the shopper drill in without a separate schema.
