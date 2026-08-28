@@ -35,6 +35,13 @@ exports.getProducts = async (req, res, next) => {
         .map((id) => id.trim())
         .filter((id) => /^[0-9a-fA-F]{24}$/.test(id));
       query._id = { $in: ids };
+    } else if (req.query.parentId && req.query.parentId.match(/^[0-9a-fA-F]{24}$/)) {
+      // Fetch a specific node's direct children
+      query.parentId = req.query.parentId;
+    } else {
+      // Default shop grid/search: top-level products only, nested children
+      // stay hidden from the general listing until their parent is opened.
+      query.parentId = null;
     }
 
     // Search query
@@ -153,15 +160,37 @@ exports.getProductById = async (req, res, next) => {
     const filter = id.match(/^[0-9a-fA-F]{24}$/) ? { _id: id } : { slug: id };
     const product = await Product.findOne(filter)
       .populate('category', 'name slug')
+      .populate('parentId', 'name slug')
       .lean();
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
+    const NESTED_OPTION_PROJECTION = 'name shortName slug price mrp images stock sku hasVariants';
+
+    // Direct children only — each is a full independent Product document, so
+    // the detail page can let the shopper drill in without a separate schema.
+    const childrenPromise = Product.find({ parentId: product._id })
+      .select(NESTED_OPTION_PROJECTION)
+      .sort({ createdAt: 1 })
+      .lean();
+
+    // Every other product sharing this one's parent (siblings), including this
+    // product itself, so the detail page can offer a flat "switch option"
+    // swatch row (like a color/size selector) without losing the sibling list.
+    const siblingsPromise = product.parentId
+      ? Product.find({ parentId: product.parentId._id })
+          .select(NESTED_OPTION_PROJECTION)
+          .sort({ createdAt: 1 })
+          .lean()
+      : Promise.resolve([]);
+
+    const [children, siblings] = await Promise.all([childrenPromise, siblingsPromise]);
+
     const payload = {
       success: true,
-      data: product,
+      data: { ...product, children, siblings },
       message: 'Product fetched successfully'
     };
 

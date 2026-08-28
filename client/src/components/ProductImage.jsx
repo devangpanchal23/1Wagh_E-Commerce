@@ -1,7 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { ASSET_ORIGIN } from '../api';
 
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=800&auto=format&fit=crop&q=80';
+// Local inline placeholder — no external network dependency, so a slow/blocked
+// third-party host can never leave the loading skeleton stuck indefinitely.
+const FALLBACK_IMAGE = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">' +
+  '<rect width="400" height="400" fill="#f1f5f9"/>' +
+  '<path d="M140 240 L180 190 L220 220 L260 160 L300 240 Z" fill="#cbd5e1"/>' +
+  '<circle cx="160" cy="160" r="18" fill="#cbd5e1"/>' +
+  '</svg>'
+);
+
+// Hard ceiling on how long a single image is allowed to sit in the loading
+// state before we treat it as failed — guards against a request that never
+// fires load/error (blocked, hung, or dropped by the network) leaving the
+// skeleton on screen forever.
+const LOAD_TIMEOUT_MS = 8000;
 
 // Helper to normalize and sanitize image URLs
 export const normalizeImageUrl = (raw) => {
@@ -18,23 +33,18 @@ export const normalizeImageUrl = (raw) => {
   url = url.trim();
   if (!url) return null;
 
-  // If it's a full URL containing /product-images/, convert to relative /product-images/...
-  if (url.includes('/product-images/')) {
-    const idx = url.indexOf('/product-images/');
-    return url.substring(idx);
+  // Our own uploaded files are always served from /uploads/<filename>, no
+  // matter what host the URL was stored with — older records may carry an
+  // absolute dev-only host (e.g. http://localhost:5050/...) baked in at
+  // upload time. Strip down to the relative path and resolve it against
+  // *this* environment's API origin, so the same database record renders
+  // correctly in dev, staging, and production without a data migration.
+  const uploadsIdx = url.indexOf('/uploads/');
+  if (uploadsIdx !== -1) {
+    return `${ASSET_ORIGIN}${url.substring(uploadsIdx)}`;
   }
 
-  // If it's product-images/... missing leading slash, add /
-  if (url.startsWith('product-images/')) {
-    return `/${url}`;
-  }
-
-  // If it's a localhost or backend upload link that has a .webp file name, redirect to /product-images/
-  if ((url.includes('localhost:') || url.includes('/uploads/')) && url.endsWith('.webp')) {
-    const filename = url.split('/').pop();
-    if (filename) return `/product-images/${filename}`;
-  }
-
+  // Any other absolute URL (external CDN, third-party placeholder) is used as-is.
   return url;
 };
 
@@ -65,6 +75,7 @@ export function ProductImage({
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [hasFallenBack, setHasFallenBack] = useState(false);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     const newUrl = getInitialUrl() || FALLBACK_IMAGE;
@@ -73,6 +84,24 @@ export function ProductImage({
     setError(false);
     setHasFallenBack(false);
   }, [src]);
+
+  // Belt-and-braces: if neither onLoad nor onError fires within the timeout
+  // (a hung/blocked request), stop showing an indefinite loading skeleton.
+  useEffect(() => {
+    if (loaded || error) return undefined;
+    timeoutRef.current = setTimeout(() => {
+      setError((prevError) => {
+        if (prevError) return prevError;
+        if (!hasFallenBack && currentSrc !== FALLBACK_IMAGE) {
+          setHasFallenBack(true);
+          setCurrentSrc(FALLBACK_IMAGE);
+          return false;
+        }
+        return true;
+      });
+    }, LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timeoutRef.current);
+  }, [currentSrc, loaded, error, hasFallenBack]);
 
   const handleError = () => {
     if (!hasFallenBack && currentSrc !== FALLBACK_IMAGE) {
@@ -126,7 +155,7 @@ export function ProductImage({
             loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
           } ${imgClassName}`}
           loading={priority ? 'eager' : 'lazy'}
-          fetchPriority={priority ? 'high' : 'auto'}
+          fetchpriority={priority ? 'high' : 'auto'}
           decoding="async"
         />
       ) : (

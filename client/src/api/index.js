@@ -1,6 +1,12 @@
 const BASE_URL = import.meta.env.VITE_API_URL || '';
 const API_BASE = `${BASE_URL.replace(/\/$/, '')}/api/v1`;
 
+// Origin the backend serves uploaded files from. Exported so any relative
+// asset path (e.g. `/uploads/xyz.jpg`) can be resolved to the right host in
+// every environment (local dev, staging, production) from one place, instead
+// of a host being baked into the URL at upload time.
+export const ASSET_ORIGIN = BASE_URL.replace(/\/$/, '');
+
 let inMemoryAccessToken = null;
 
 // Catalog data is public, changes infrequently, and is requested by several

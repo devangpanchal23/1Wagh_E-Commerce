@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ShieldAlert, ShieldCheck, Lock, Key, Package, ShoppingBag, Users, DollarSign,
@@ -9,6 +9,7 @@ import {
 
 import { useToast } from '../context/ToastContext';
 import { fetchAdminApi } from '../api';
+import { ProductImage } from '../components/ProductImage';
 import { AdminLoginForm } from '../components/AdminLoginForm';
 import { ImageCropModal } from '../components/admin/ImageCropModal';
 import { GoogleDrivePickerButton } from '../components/GoogleDrivePickerButton';
@@ -178,6 +179,9 @@ export function Admin() {
     mrp: '',
     category: '',
     brand: 'WAGH',
+    sku: '',
+    shortName: '',
+    parentId: '',
     stock: 100,
     images: [],
     outputPower: '',
@@ -217,6 +221,169 @@ export function Admin() {
 
   // Product Selection & Bulk Action State
   const [selectedProductIds, setSelectedProductIds] = useState([]);
+
+  // Nested product hierarchy: which parent rows are expanded in the tree table
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+
+  const toggleExpanded = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Groups the flat `products` list into a parent -> children map, keyed by
+  // parent id ('root' for top-level products with no parentId).
+  const childrenByParent = useMemo(() => {
+    const map = new Map();
+    products.forEach((p) => {
+      const parentKey = p.parentId?._id || p.parentId || 'root';
+      if (!map.has(parentKey)) map.set(parentKey, []);
+      map.get(parentKey).push(p);
+    });
+    return map;
+  }, [products]);
+
+  // Every descendant id (any depth) of a given product, computed client-side
+  // from the already-loaded flat list — used to keep the parent picker and the
+  // delete confirmation from offering/hiding cycle-causing or surprising choices.
+  const getDescendantIdsOf = (productId) => {
+    const descendants = [];
+    let level = [productId];
+    while (level.length > 0) {
+      const nextLevel = [];
+      level.forEach((id) => {
+        (childrenByParent.get(id) || []).forEach((child) => {
+          descendants.push(child._id);
+          nextLevel.push(child._id);
+        });
+      });
+      level = nextLevel;
+    }
+    return descendants;
+  };
+
+  // Builds the flat list of <tr> rows for the nested product tree: each node's
+  // row, followed (if expanded) by its children's rows, indented one level deeper.
+  const renderProductRows = (parentKey, depth) => {
+    const nodes = childrenByParent.get(parentKey) || [];
+    return nodes.flatMap((p) => {
+      const isLowStock = p.stock < 10;
+      const isSelected = selectedProductIds.includes(p._id);
+      const kids = childrenByParent.get(p._id) || [];
+      const hasKids = kids.length > 0;
+      const isExpanded = expandedIds.has(p._id);
+
+      const row = (
+        <tr key={p._id} className={`hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-teal-50/40' : ''}`}>
+          <td className="py-3 px-4 text-center">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => handleSelectProduct(p._id)}
+              className="w-4 h-4 rounded text-wagh-teal focus:ring-wagh-teal border-slate-300 cursor-pointer"
+            />
+          </td>
+          <td className="py-3 px-4">
+          <ProductImage src={p.images} alt={p.name} variant="thumbnail" className="w-12 h-12 shrink-0" />
+        </td>
+        <td className="py-3 px-4">
+          <div className="space-y-1 max-w-xs sm:max-w-md" style={{ paddingLeft: depth * 20 }}>
+            <div className="flex items-center gap-1.5">
+              {hasKids && (
+                <button
+                  type="button"
+                  onClick={() => toggleExpanded(p._id)}
+                  className="p-0.5 rounded hover:bg-slate-200 text-slate-500 cursor-pointer shrink-0"
+                  title={isExpanded ? 'Collapse' : 'Expand'}
+                >
+                  {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </button>
+              )}
+              <span className="font-bold text-slate-900 text-sm block leading-tight">{p.name}</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
+                {p.brand || 'WAGH'}
+              </span>
+              {p.isFeatured && (
+                <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
+                  Featured
+                </span>
+              )}
+              {hasKids && (
+                <span className="px-2 py-0.5 rounded-md bg-teal-50 text-wagh-teal border border-teal-200/60 text-[10px] font-bold">
+                  {kids.length} inside
+                </span>
+              )}
+            </div>
+          </div>
+        </td>
+        <td className="py-3 px-4 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200/60">
+            <Ruler className="w-3.5 h-3.5 text-wagh-teal shrink-0" />
+            <span>{p.specs?.dimensions || p.specs?.size || 'Standard'}</span>
+          </span>
+        </td>
+        <td className="py-3 px-4 whitespace-nowrap">
+          <span className="font-extrabold text-wagh-teal text-sm">₹{p.price?.toLocaleString('en-IN')}</span>
+        </td>
+        <td className="py-3 px-4 whitespace-nowrap">
+          <span className="text-slate-400 line-through text-xs font-medium">₹{p.mrp?.toLocaleString('en-IN')}</span>
+        </td>
+        <td className="py-3 px-4 whitespace-nowrap">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+            isLowStock
+              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+            {p.stock} in stock
+          </span>
+        </td>
+        <td className="py-3 px-4 whitespace-nowrap">
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => openCreateModal(p._id)}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-800 hover:text-white border border-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+              title="Add a product inside this one"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Inside</span>
+            </button>
+            <button
+              onClick={() => setSelectedViewProduct(p)}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-800 hover:text-white border border-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+            >
+              <Eye className="w-3.5 h-3.5 text-slate-500" />
+              <span>View</span>
+            </button>
+            <button
+              onClick={() => openEditModal(p)}
+              className="px-3.5 py-1.5 rounded-xl bg-teal-50 text-wagh-teal hover:bg-wagh-teal hover:text-white border border-teal-200/60 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+            >
+              <Edit className="w-3.5 h-3.5" />
+              <span>Edit</span>
+            </button>
+            <button
+              onClick={() => handleDeleteProduct(p._id)}
+              className="px-3.5 py-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200/60 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete</span>
+            </button>
+          </div>
+        </td>
+        </tr>
+      );
+
+      return hasKids && isExpanded
+        ? [row, ...renderProductRows(p._id, depth + 1)]
+        : [row];
+    });
+  };
 
   const handleSelectAllProducts = (e) => {
     if (e.target.checked) {
@@ -864,6 +1031,9 @@ export function Admin() {
         mrp: Number(productForm.mrp),
         category: productForm.category || categories[0]?._id || '',
         brand: productForm.brand,
+        sku: productForm.sku || '',
+        shortName: productForm.shortName || '',
+        parentId: productForm.parentId || null,
         stock: Number(productForm.stock),
         images: productForm.images.length > 0 ? productForm.images : ['https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=600'],
         specs: {
@@ -912,12 +1082,17 @@ export function Admin() {
   };
 
   const handleDeleteProduct = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    const descendantIds = getDescendantIdsOf(id);
+    const confirmMessage = descendantIds.length > 0
+      ? `This product has ${descendantIds.length} nested product(s) inside it. Deleting it will also delete all of them. Are you sure?`
+      : 'Are you sure you want to delete this product?';
+    if (!window.confirm(confirmMessage)) return;
     try {
       const res = await fetchAdminApi(`/admin/products/${id}`, { method: 'DELETE' });
       if (res && res.success) {
-        addToast('Product deleted', 'info');
-        setProducts(products.filter(p => p._id !== id));
+        addToast(res.message || 'Product deleted', 'info');
+        const removedIds = new Set([id, ...descendantIds]);
+        setProducts(products.filter(p => !removedIds.has(p._id)));
       }
     } catch (err) {
       addToast(err.message || 'Delete failed', 'error');
@@ -940,18 +1115,23 @@ export function Admin() {
   };
 
 
-  const openCreateModal = () => {
+  const openCreateModal = (presetParentId) => {
     setEditingProductId(null);
     setModalTab('basic');
     setImageSourceTab('upload');
+
+    const parentProduct = presetParentId ? products.find((p) => p._id === presetParentId) : null;
 
     setProductForm({
       name: '',
       description: '',
       price: '',
       mrp: '',
-      category: categories[0]?._id || '',
+      category: parentProduct?.category?._id || parentProduct?.category || categories[0]?._id || '',
       brand: 'WAGH',
+      sku: '',
+      shortName: '',
+      parentId: presetParentId || '',
       stock: 100,
       images: [],
       outputPower: '',
@@ -987,6 +1167,9 @@ export function Admin() {
       mrp: p.mrp,
       category: p.category?._id || p.category,
       brand: p.brand || 'WAGH',
+      sku: p.sku || '',
+      shortName: p.shortName || '',
+      parentId: p.parentId?._id || p.parentId || '',
       stock: p.stock || 100,
       images: Array.isArray(p.images) ? p.images : [],
       outputPower: p.specs?.outputPower || '',
@@ -1046,7 +1229,7 @@ export function Admin() {
           </button>
 
           <button
-            onClick={openCreateModal}
+            onClick={() => openCreateModal()}
             className="px-5 py-2.5 rounded-full bg-wagh-teal text-white font-bold text-xs hover:bg-wagh-teal-dark transition-colors flex items-center gap-2 shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -1353,7 +1536,7 @@ export function Admin() {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {o.items?.map((item, idx) => (
                                   <div key={idx} className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 border border-wagh-border text-xs">
-                                    <img src={item.image} alt={item.name} className="w-9 h-9 object-contain bg-white rounded border p-0.5 shrink-0" />
+                                    <ProductImage src={item.image} alt={item.name} variant="thumbnail" className="w-9 h-9 shrink-0" />
                                     <div className="truncate flex-1">
                                       <span className="font-bold text-wagh-dark block truncate">{item.name}</span>
                                       <span className="text-[11px] text-wagh-muted block font-mono-tag">
@@ -1491,7 +1674,7 @@ export function Admin() {
                           <p>No products found in catalog.</p>
                           <button
                             type="button"
-                            onClick={openCreateModal}
+                            onClick={() => openCreateModal()}
                             className="px-4 py-2 rounded-full bg-wagh-teal text-white text-xs font-bold shadow-xs hover:bg-wagh-teal-dark transition-all mt-2"
                           >
                             Add New Product
@@ -1499,89 +1682,8 @@ export function Admin() {
                         </td>
                       </tr>
                     ) : (
-                      products.map((p) => {
-                        const isLowStock = p.stock < 10;
-                        const isSelected = selectedProductIds.includes(p._id);
-                        return (
-                          <tr key={p._id} className={`hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-teal-50/40' : ''}`}>
-                            <td className="py-3 px-4 text-center">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => handleSelectProduct(p._id)}
-                                className="w-4 h-4 rounded text-wagh-teal focus:ring-wagh-teal border-slate-300 cursor-pointer"
-                              />
-                            </td>
-                            <td className="py-3 px-4">
-                            <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200/80 p-1 flex items-center justify-center shrink-0 shadow-2xs">
-                              <img src={p.images?.[0]} alt={p.name} className="max-w-full max-h-full object-contain" />
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="space-y-1 max-w-xs sm:max-w-md">
-                              <span className="font-bold text-slate-900 text-sm block leading-tight">{p.name}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
-                                  {p.brand || 'WAGH'}
-                                </span>
-                                {p.isFeatured && (
-                                  <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
-                                    Featured
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200/60">
-                              <Ruler className="w-3.5 h-3.5 text-wagh-teal shrink-0" />
-                              <span>{p.specs?.dimensions || p.specs?.size || 'Standard'}</span>
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <span className="font-extrabold text-wagh-teal text-sm">₹{p.price?.toLocaleString('en-IN')}</span>
-                          </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <span className="text-slate-400 line-through text-xs font-medium">₹{p.mrp?.toLocaleString('en-IN')}</span>
-                          </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                              isLowStock
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                              {p.stock} in stock
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => setSelectedViewProduct(p)}
-                                className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-800 hover:text-white border border-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                              >
-                                <Eye className="w-3.5 h-3.5 text-slate-500" />
-                                <span>View</span>
-                              </button>
-                              <button
-                                onClick={() => openEditModal(p)}
-                                className="px-3.5 py-1.5 rounded-xl bg-teal-50 text-wagh-teal hover:bg-wagh-teal hover:text-white border border-teal-200/60 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                                <span>Edit</span>
-                              </button>
-                              <button
-                                onClick={() => handleDeleteProduct(p._id)}
-                                className="px-3.5 py-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200/60 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    }))}
+                      renderProductRows('root', 0)
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1700,6 +1802,53 @@ export function Admin() {
                         onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
                         className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-wagh-teal"
                       />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-semibold">SKU</label>
+                      <input
+                        type="text"
+                        value={productForm.sku}
+                        onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })}
+                        placeholder="Optional"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-wagh-teal"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-semibold">Short Display Name</label>
+                      <input
+                        type="text"
+                        value={productForm.shortName}
+                        onChange={(e) => setProductForm({ ...productForm, shortName: e.target.value })}
+                        placeholder="e.g. C to C"
+                        maxLength={40}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-wagh-teal"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">Shown on the option swatch when nested under a parent</p>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 mb-1 font-semibold">Parent Product</label>
+                      <select
+                        value={productForm.parentId || ''}
+                        onChange={(e) => setProductForm({ ...productForm, parentId: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-wagh-teal font-sans text-xs bg-white"
+                      >
+                        <option value="">— None (top-level product) —</option>
+                        {products
+                          .filter((p) => {
+                            if (!editingProductId) return true;
+                            if (p._id === editingProductId) return false;
+                            return !getDescendantIdsOf(editingProductId).includes(p._id);
+                          })
+                          .map((p) => (
+                            <option key={p._id} value={p._id}>
+                              {p.name}
+                            </option>
+                          ))}
+                      </select>
+                      <p className="text-[11px] text-slate-500 mt-1">Nest this product inside another one, e.g. "C to C" inside "USB to C"</p>
                     </div>
                   </div>
 
@@ -1883,7 +2032,7 @@ export function Admin() {
                                 onClick={() => handleSelectGalleryImage(media)}
                                 className="group relative aspect-square rounded-xl bg-white border border-slate-200 overflow-hidden cursor-pointer hover:border-wagh-teal hover:shadow-md transition-all p-1"
                               >
-                                <img src={media.url} alt={media.filename} className="w-full h-full object-contain" />
+                                <ProductImage src={media.url} alt={media.filename} className="w-full h-full" />
                                 <div className="absolute inset-0 bg-wagh-teal/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
                                   + Select
                                 </div>
@@ -1909,7 +2058,6 @@ export function Admin() {
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {productForm.images.map((img, idx) => {
-                          const imgUrl = typeof img === 'string' ? img : img.url;
                           const isPrimary = typeof img === 'string' ? idx === 0 : (img.isPrimary || idx === 0);
 
                           return (
@@ -1919,8 +2067,8 @@ export function Admin() {
                                 isPrimary ? 'border-wagh-teal shadow-xs ring-1 ring-wagh-teal/30' : 'border-slate-200'
                               }`}
                             >
-                              <div className="relative aspect-square rounded-xl bg-slate-50 border overflow-hidden p-1 flex items-center justify-center">
-                                <img src={imgUrl} alt={`Product ${idx + 1}`} className="max-h-full max-w-full object-contain" />
+                              <div className="relative aspect-square rounded-xl bg-slate-50 border overflow-hidden">
+                                <ProductImage src={img} alt={`Product ${idx + 1}`} variant="card" className="w-full h-full border-0" />
                                 {isPrimary && (
                                   <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-wagh-teal text-white text-[9px] font-bold uppercase tracking-wider shadow-xs">
                                     Primary
@@ -2648,13 +2796,11 @@ export function Admin() {
             {/* Gallery & Key Info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-3">
-                <div className="aspect-square bg-slate-50 rounded-2xl border border-slate-200 p-3 flex items-center justify-center">
-                  <img src={selectedViewProduct.images?.[0]} alt={selectedViewProduct.name} className="max-h-full max-w-full object-contain" />
-                </div>
+                <ProductImage src={selectedViewProduct.images} alt={selectedViewProduct.name} variant="card" className="aspect-square" />
                 {selectedViewProduct.images?.length > 1 && (
                   <div className="flex items-center gap-2 overflow-x-auto pb-1">
                     {selectedViewProduct.images.map((img, idx) => (
-                      <img key={idx} src={typeof img === 'string' ? img : img.url} alt="" className="w-12 h-12 rounded-lg border border-slate-200 p-1 object-contain bg-white shrink-0" />
+                      <ProductImage key={idx} src={img} alt="" variant="thumbnail" className="w-12 h-12 shrink-0" />
                     ))}
                   </div>
                 )}
@@ -2828,7 +2974,7 @@ export function Admin() {
                     {selectedOrderModal.items?.map((item, idx) => (
                       <tr key={idx}>
                         <td className="py-3 px-4 flex items-center gap-3">
-                          <img src={item.image} alt={item.name} className="w-10 h-10 object-contain rounded-lg border border-slate-200 p-0.5 bg-white shrink-0" />
+                          <ProductImage src={item.image} alt={item.name} variant="thumbnail" className="w-10 h-10 shrink-0" />
                           <div>
                             <p className="font-bold text-slate-900">{item.name}</p>
                             <p className="text-[10px] text-slate-400 font-mono-tag">SKU: {item.sku || 'WAGH-PRODUCT'}</p>

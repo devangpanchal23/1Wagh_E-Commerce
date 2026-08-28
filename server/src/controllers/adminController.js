@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Order = require('../models/Order');
@@ -6,6 +7,7 @@ const User = require('../models/User');
 const Category = require('../models/Category');
 const AdminConfig = require('../models/AdminConfig');
 const { resolveCategoryId } = require('../utils/categoryResolver');
+const { resolveParentId, getDescendantIds } = require('../utils/parentResolver');
 const cache = require('../utils/cache');
 const { buildXlsxBuffer, XLSX_CONTENT_TYPE } = require('../utils/xlsxWriter');
 
@@ -392,6 +394,7 @@ exports.createAdminProduct = async (req, res, next) => {
       req.body.sections = sanitizeSections(req.body.sections);
     }
     req.body.category = await resolveCategoryId(req.body.category);
+    req.body.parentId = await resolveParentId(req.body.parentId, null);
     const product = await Product.create(req.body);
 
     cache.invalidate('products:', 'product:');
@@ -425,6 +428,10 @@ exports.updateAdminProduct = async (req, res, next) => {
       req.body.category = await resolveCategoryId(req.body.category);
     }
 
+    if ('parentId' in req.body) {
+      req.body.parentId = await resolveParentId(req.body.parentId, req.params.id);
+    }
+
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -447,17 +454,24 @@ exports.updateAdminProduct = async (req, res, next) => {
 // @route   DELETE /api/v1/admin/products/:id
 exports.deleteAdminProduct = async (req, res, next) => {
   try {
-    // Single round trip — findByIdAndDelete already reports whether it matched
-    const product = await Product.findByIdAndDelete(req.params.id).lean();
+    const product = await Product.findById(req.params.id).select('_id').lean();
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
+
+    // Deleting a node also removes every nested child underneath it, at any
+    // depth, so no product is left with a parentId pointing at a dead document.
+    const descendantIds = await getDescendantIds(req.params.id);
+    await Product.deleteMany({ _id: { $in: [req.params.id, ...descendantIds] } });
 
     cache.invalidate('products:', 'product:');
 
     res.json({
       success: true,
-      message: 'Product deleted successfully',
+      deletedChildrenCount: descendantIds.length,
+      message: descendantIds.length > 0
+        ? `Product deleted successfully along with ${descendantIds.length} nested product(s)`
+        : 'Product deleted successfully',
     });
   } catch (error) {
     next(error);
@@ -491,9 +505,16 @@ exports.bulkDeleteAdminProducts = async (req, res, next) => {
       .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id));
 
+    // Cascade: removing a selected group also removes its nested children,
+    // at any depth, so no product is left with a parentId pointing at nothing.
+    const descendantIdLists = await Promise.all(
+      validObjectIds.map((id) => getDescendantIds(id))
+    );
+    const allDescendantIds = descendantIdLists.flat();
+
     const result = await Product.deleteMany({
       $or: [
-        { _id: { $in: validObjectIds } },
+        { _id: { $in: [...validObjectIds, ...allDescendantIds] } },
         { _id: { $in: productIds } },
       ],
     });

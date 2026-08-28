@@ -16,9 +16,12 @@ exports.uploadProductImage = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please select an image file to upload.' });
     }
 
-    const host = req.get('host');
-    const protocol = req.protocol;
-    const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+    // Store a relative path, not an absolute host:port URL — the admin panel
+    // and storefront may run on a different host/port (or a different domain
+    // entirely once deployed) than whatever this upload request happened to
+    // see. The client resolves this path against its own configured API
+    // origin at render time, so the same record works in every environment.
+    const fileUrl = `/uploads/${req.file.filename}`;
     const publicId = `local_${Date.now()}_${req.file.filename}`;
 
     res.status(201).json({
@@ -47,8 +50,6 @@ exports.getMediaGallery = async (req, res, next) => {
     }
 
     const files = fs.readdirSync(UPLOADS_DIR);
-    const host = req.get('host');
-    const protocol = req.protocol;
 
     const mediaList = files
       .filter((file) => /\.(jpg|jpeg|png|webp|svg)$/i.test(file))
@@ -56,7 +57,7 @@ exports.getMediaGallery = async (req, res, next) => {
         const filePath = path.join(UPLOADS_DIR, file);
         const stats = fs.statSync(filePath);
         return {
-          url: `${protocol}://${host}/uploads/${file}`,
+          url: `/uploads/${file}`,
           publicId: `local_${file}`,
           filename: file,
           size: stats.size,

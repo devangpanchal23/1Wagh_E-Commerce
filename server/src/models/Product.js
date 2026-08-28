@@ -39,6 +39,27 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: 'WAGH',
   },
+  sku: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  // Compact label shown on the swatch/chip when this product is displayed as
+  // a selectable option under its parent (e.g. full name "USB-C to USB-C
+  // Cable" but shortName "C to C"). Falls back to `name` when empty.
+  shortName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  // Recursive self-reference: null means top-level. A product can contain child
+  // products (its own full Product documents), and each child can itself have
+  // children — unlimited depth, no separate schema per level.
+  parentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    default: null,
+  },
   specs: {
     outputPower: { type: String, default: '' },
     compatibility: { type: String, default: '' },
@@ -156,6 +177,9 @@ productSchema.index({ ratingCount: -1, ratingAvg: -1 });
 
 // Brand facet
 productSchema.index({ brand: 1 });
+
+// Nested product hierarchy: listing a node's direct children, sorted oldest first
+productSchema.index({ parentId: 1, createdAt: 1 });
 
 // Home page collections. These use partial filters rather than `sparse`: the flags
 // default to `false`, so every product would carry the field and a sparse index

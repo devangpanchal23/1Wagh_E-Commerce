@@ -8,6 +8,7 @@ import { ShieldCheck, AlertCircle, RefreshCw, LogOut, Package, Heart, User as Us
 import { useNavigate, Link } from 'react-router-dom';
 import { useWishlist } from '../context/WishlistContext';
 import { ProductCard } from '../components/ProductCard';
+import { ProductImage } from '../components/ProductImage';
 import { fetchApi } from '../api';
 
 export function ProfilePage() {
@@ -283,7 +284,7 @@ export function ProfilePage() {
                     <div className="space-y-2">
                       {order.items?.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-3 text-xs">
-                          <img src={item.image} alt={item.name} className="w-10 h-10 object-contain rounded bg-gray-50 border p-1" />
+                          <ProductImage src={item.image} alt={item.name} variant="thumbnail" className="w-10 h-10" />
                           <div className="flex-1 truncate">
                             <span className="font-bold text-wagh-dark">{item.name}</span>
                             <span className="text-wagh-muted block">Qty: {item.qty} × ₹{item.price}</span>

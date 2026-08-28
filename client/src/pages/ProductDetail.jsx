@@ -143,92 +143,139 @@ export function ProductDetail() {
   const [newComment, setNewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // Ancestor chain (excluding the currently displayed node) for the nested
+  // product breadcrumb — each entry is { _id, name, slug }.
+  const [breadcrumbStack, setBreadcrumbStack] = useState([]);
+
+  // Fetches a single product node (by id or slug) and its reviews, and swaps it
+  // into view. Shared by the URL-driven initial load and by in-place child /
+  // breadcrumb navigation, so switching nodes never mixes data between them.
+  const loadProductNode = async (nodeId, { signal, isCurrentRef } = {}) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [res, reviewsResult] = await Promise.all([
+        fetchApi(`/products/${nodeId}`, { signal }),
+        fetchApi(`/products/${nodeId}/reviews`, { signal })
+          .catch((reviewError) => {
+            if (reviewError.name !== 'AbortError') console.error('Failed to load reviews:', reviewError);
+            return null;
+          }),
+      ]);
+
+      if (isCurrentRef && !isCurrentRef.current) return null;
+      if (!res || !res.data) return null;
+
+      const loadedProduct = res.data;
+      setProduct(loadedProduct);
+      setSelectedImage(0);
+      setSelectedColorIdx(0);
+      setSelectedSizeIdx(0);
+      setQty(1);
+      setReviews(reviewsResult?.data
+        ? (Array.isArray(reviewsResult.data) ? reviewsResult.data : (reviewsResult.data.reviews || []))
+        : []);
+
+      // Handle variant initialization from URL query parameters (?color=...&size=...)
+      if (loadedProduct.hasVariants && Array.isArray(loadedProduct.variants) && loadedProduct.variants.length > 0) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const colorParam = searchParams.get('color')?.toLowerCase();
+        const sizeParam = searchParams.get('size')?.toLowerCase();
+
+        let colorIdx = 0;
+        if (colorParam) {
+          const foundCIdx = loadedProduct.variants.findIndex(
+            (v) => v.color?.name?.toLowerCase() === colorParam
+          );
+          if (foundCIdx > -1) colorIdx = foundCIdx;
+        }
+
+        const currentVariant = loadedProduct.variants[colorIdx] || loadedProduct.variants[0];
+        let sizeIdx = 0;
+        if (sizeParam && Array.isArray(currentVariant.sizes)) {
+          const foundSIdx = currentVariant.sizes.findIndex(
+            (s) => s.label?.toLowerCase() === sizeParam || s.sku?.toLowerCase() === sizeParam
+          );
+          if (foundSIdx > -1) sizeIdx = foundSIdx;
+        } else if (Array.isArray(currentVariant.sizes)) {
+          const inStockIdx = currentVariant.sizes.findIndex((s) => s.stock > 0);
+          if (inStockIdx > -1) sizeIdx = inStockIdx;
+        }
+
+        setSelectedColorIdx(colorIdx);
+        setSelectedSizeIdx(sizeIdx);
+      }
+
+      // Fetch related products
+      if (loadedProduct.category) {
+        try {
+          const catId = typeof loadedProduct.category === 'object' ? loadedProduct.category._id : loadedProduct.category;
+          const relRes = await fetchApi(`/products?category=${catId}&limit=5`, { signal });
+          if ((!isCurrentRef || isCurrentRef.current) && relRes && relRes.data) {
+            const relList = Array.isArray(relRes.data) ? relRes.data : (relRes.data.products || []);
+            setRelatedProducts(relList.filter((p) => String(p._id) !== String(loadedProduct._id)));
+          }
+        } catch (e) {
+          if (e.name !== 'AbortError') console.error('Failed to load related products:', e);
+        }
+      } else {
+        setRelatedProducts([]);
+      }
+
+      return loadedProduct;
+    } catch (err) {
+      if (err.name !== 'AbortError' && (!isCurrentRef || isCurrentRef.current)) {
+        setError(err.message || 'Failed to load product');
+      }
+      return null;
+    } finally {
+      if (!isCurrentRef || isCurrentRef.current) setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
-    let isCurrent = true;
+    const isCurrentRef = { current: true };
 
-    const loadProductAndRelated = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Reviews do not depend on the product response, so start them with the
-        // product request instead of adding a full network round trip.
-        const [res, reviewsResult] = await Promise.all([
-          fetchApi(`/products/${id}`, { signal: controller.signal }),
-          fetchApi(`/products/${id}/reviews`, { signal: controller.signal })
-            .catch((reviewError) => {
-              if (reviewError.name !== 'AbortError') console.error('Failed to load reviews:', reviewError);
-              return null;
-            }),
-        ]);
-
-        if (!isCurrent) return;
-        if (res && res.data) {
-          const loadedProduct = res.data;
-          setProduct(loadedProduct);
-          setSelectedImage(0);
-          setReviews(reviewsResult?.data
-            ? (Array.isArray(reviewsResult.data) ? reviewsResult.data : (reviewsResult.data.reviews || []))
-            : []);
-
-          // Handle variant initialization from URL query parameters (?color=...&size=...)
-          if (loadedProduct.hasVariants && Array.isArray(loadedProduct.variants) && loadedProduct.variants.length > 0) {
-            const searchParams = new URLSearchParams(window.location.search);
-            const colorParam = searchParams.get('color')?.toLowerCase();
-            const sizeParam = searchParams.get('size')?.toLowerCase();
-
-            let colorIdx = 0;
-            if (colorParam) {
-              const foundCIdx = loadedProduct.variants.findIndex(
-                (v) => v.color?.name?.toLowerCase() === colorParam
-              );
-              if (foundCIdx > -1) colorIdx = foundCIdx;
-            }
-
-            const currentVariant = loadedProduct.variants[colorIdx] || loadedProduct.variants[0];
-            let sizeIdx = 0;
-            if (sizeParam && Array.isArray(currentVariant.sizes)) {
-              const foundSIdx = currentVariant.sizes.findIndex(
-                (s) => s.label?.toLowerCase() === sizeParam || s.sku?.toLowerCase() === sizeParam
-              );
-              if (foundSIdx > -1) sizeIdx = foundSIdx;
-            } else if (Array.isArray(currentVariant.sizes)) {
-              const inStockIdx = currentVariant.sizes.findIndex((s) => s.stock > 0);
-              if (inStockIdx > -1) sizeIdx = inStockIdx;
-            }
-
-            setSelectedColorIdx(colorIdx);
-            setSelectedSizeIdx(sizeIdx);
-          }
-
-          // Fetch related products
-          if (loadedProduct.category) {
-            try {
-              const catId = typeof loadedProduct.category === 'object' ? loadedProduct.category._id : loadedProduct.category;
-              const relRes = await fetchApi(`/products?category=${catId}&limit=5`, { signal: controller.signal });
-              if (isCurrent && relRes && relRes.data) {
-                const relList = Array.isArray(relRes.data) ? relRes.data : (relRes.data.products || []);
-                setRelatedProducts(relList.filter((p) => String(p._id) !== String(id)));
-              }
-            } catch (e) {
-              if (e.name !== 'AbortError') console.error('Failed to load related products:', e);
-            }
-          }
-        }
-      } catch (err) {
-        if (err.name !== 'AbortError' && isCurrent) setError(err.message || 'Failed to load product');
-      } finally {
-        if (isCurrent) setLoading(false);
-      }
-    };
-
-    loadProductAndRelated();
+    loadProductNode(id, { signal: controller.signal, isCurrentRef }).then((loadedProduct) => {
+      if (!loadedProduct || !isCurrentRef.current) return;
+      // Seed the breadcrumb from the one level of parent context the API
+      // returns; drilling further down appends to this via handleSelectChild.
+      setBreadcrumbStack(
+        loadedProduct.parentId && loadedProduct.parentId._id
+          ? [{ _id: loadedProduct.parentId._id, name: loadedProduct.parentId.name, slug: loadedProduct.parentId.slug }]
+          : []
+      );
+    });
     window.scrollTo(0, 0);
     return () => {
-      isCurrent = false;
+      isCurrentRef.current = false;
       controller.abort();
     };
   }, [id]);
+
+  // Drills into a child product in place — same page, no route change — so its
+  // own images/price/specs replace what's shown without ever mixing with the
+  // parent's data.
+  const handleSelectChild = async (child) => {
+    if (!product || !child?._id) return;
+    const parentEntry = { _id: product._id, name: product.name, slug: product.slug };
+    const loaded = await loadProductNode(child._id);
+    if (loaded) setBreadcrumbStack((prev) => [...prev, parentEntry]);
+  };
+
+  // Switches to a sibling (another option under the same parent) — same depth,
+  // so the breadcrumb ancestry above stays exactly as it was.
+  const handleSelectSibling = async (sibling) => {
+    if (!product || !sibling?._id || sibling._id === product._id) return;
+    await loadProductNode(sibling._id);
+  };
+
+  // Jumps back up to an ancestor node from the breadcrumb strip.
+  const handleBreadcrumbClick = async (entry, idx) => {
+    const loaded = await loadProductNode(entry._id);
+    if (loaded) setBreadcrumbStack((prev) => prev.slice(0, idx));
+  };
 
   // Derived variant computations
   const hasVariants = Boolean(product?.hasVariants && Array.isArray(product.variants) && product.variants.length > 0);
@@ -631,10 +678,35 @@ export function ProductDetail() {
 
         {/* PRODUCT SUMMARY & BUY ACTIONS */}
         <div className="lg:col-span-6 space-y-6">
+          {breadcrumbStack.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap text-xs font-mono-tag font-bold text-slate-500">
+              {breadcrumbStack.map((entry, idx) => (
+                <React.Fragment key={entry._id}>
+                  <button
+                    type="button"
+                    onClick={() => handleBreadcrumbClick(entry, idx)}
+                    className="hover:text-[#0f4b3f] hover:underline transition-colors cursor-pointer"
+                  >
+                    {entry.name}
+                  </button>
+                  <ChevronRight className="w-3 h-3 text-slate-300" />
+                </React.Fragment>
+              ))}
+              <span className="text-slate-800">{product.name}</span>
+            </div>
+          )}
+
           <div className="space-y-2.5">
-            <span className="inline-block font-mono-tag text-[10px] font-bold uppercase tracking-widest text-[#0f4b3f] bg-[#0f4b3f]/10 px-3 py-1 rounded-md border border-[#0f4b3f]/15">
-              {product.brand || 'WAGH'}
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-block font-mono-tag text-[10px] font-bold uppercase tracking-widest text-[#0f4b3f] bg-[#0f4b3f]/10 px-3 py-1 rounded-md border border-[#0f4b3f]/15">
+                {product.brand || 'WAGH'}
+              </span>
+              {product.sku && (
+                <span className="inline-block font-mono-tag text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-3 py-1 rounded-md border border-slate-200">
+                  SKU: {product.sku}
+                </span>
+              )}
+            </div>
             <h1 className="font-editorial text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight break-words">
               {product.name}
             </h1>
@@ -664,6 +736,80 @@ export function ProductDetail() {
               Inclusive of all taxes
             </span>
           </div>
+
+          {/* SIBLING OPTIONS — other products under the same parent (e.g. "C to C"
+              vs "C to i"), shown as an image-swatch row exactly like the
+              color/size selectors below, so switching never loses the option list. */}
+          {Array.isArray(product.siblings) && product.siblings.length > 1 && (
+            <div className="space-y-2.5 p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 shadow-2xs">
+              <span className="font-mono-tag text-xs font-bold uppercase text-slate-700 tracking-wider">
+                OPTION: <span className="text-[#0f4b3f] font-extrabold">{product.shortName || product.name}</span>
+              </span>
+              <div className="flex items-start gap-3 flex-wrap">
+                {product.siblings.map((sibling) => {
+                  const isSelected = sibling._id === product._id;
+                  const siblingOutOfStock = (sibling.stock || 0) <= 0;
+                  const label = sibling.shortName || sibling.name;
+                  return (
+                    <button
+                      key={sibling._id}
+                      type="button"
+                      disabled={siblingOutOfStock && !isSelected}
+                      onClick={() => handleSelectSibling(sibling)}
+                      title={siblingOutOfStock ? `${label} - Out of Stock` : `Select: ${label}`}
+                      className={`flex flex-col items-center gap-1.5 w-[4.5rem] ${
+                        siblingOutOfStock && !isSelected ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                      }`}
+                    >
+                      <div className={`w-16 h-16 rounded-xl overflow-hidden border-2 bg-white transition-all ${
+                        isSelected
+                          ? 'border-[#0f4b3f] ring-2 ring-[#0f4b3f]/20 shadow-xs scale-105'
+                          : 'border-slate-200 hover:border-slate-400'
+                      }`}>
+                        <ProductImage src={sibling.images?.[0]} alt={label} variant="thumbnail" className="w-full h-full border-0 rounded-none" />
+                      </div>
+                      <span className={`text-[10px] font-bold text-center leading-tight truncate w-full ${isSelected ? 'text-[#0f4b3f]' : 'text-slate-700'}`}>
+                        {label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* NESTED CHILD PRODUCTS — drill further in; each card is a full,
+              independent product (its own images/price/stock), never mixed
+              with the parent's own data. */}
+          {Array.isArray(product.children) && product.children.length > 0 && (
+            <div className="space-y-2.5 p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 shadow-2xs">
+              <span className="font-mono-tag text-xs font-bold uppercase text-slate-700 tracking-wider">
+                Choose from {product.children.length} option{product.children.length > 1 ? 's' : ''} inside {product.shortName || product.name}
+              </span>
+              <div className="flex items-start gap-3 flex-wrap">
+                {product.children.map((child) => {
+                  const childOutOfStock = (child.stock || 0) <= 0;
+                  const label = child.shortName || child.name;
+                  return (
+                    <button
+                      key={child._id}
+                      type="button"
+                      disabled={childOutOfStock}
+                      onClick={() => handleSelectChild(child)}
+                      title={childOutOfStock ? `${label} - Out of Stock` : `Select: ${label}`}
+                      className={`flex flex-col items-center gap-1.5 w-[4.5rem] ${childOutOfStock ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-slate-200 bg-white hover:border-slate-400 transition-all">
+                        <ProductImage src={child.images?.[0]} alt={label} variant="thumbnail" className="w-full h-full border-0 rounded-none" />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-700 text-center leading-tight truncate w-full">{label}</span>
+                      <span className="text-[10px] font-mono-tag font-extrabold text-[#0f4b3f]">₹{child.price}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* VARIANT SELECTORS (COLOR + SIZE/LENGTH) */}
           {hasVariants && (
