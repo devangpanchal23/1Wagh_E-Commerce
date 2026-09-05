@@ -4,7 +4,7 @@ import {
   ShieldAlert, ShieldCheck, Lock, Key, Package, ShoppingBag, Users, DollarSign,
   Plus, Edit, Trash2, CheckCircle2, AlertCircle, LogOut, Calendar, Filter,
   Clock, TrendingUp, Search, ChevronDown, ChevronRight, CheckCircle, Truck, XCircle, X, Check, Ruler,
-  Upload, Image as ImageIcon, Layers, Grid, ArrowUp, ArrowDown, FileText, List, Table, Crop, RefreshCw, HardDrive, Eye, EyeOff
+  Upload, Image as ImageIcon, Layers, Grid, ArrowUp, ArrowDown, FileText, List, Table, Crop, RefreshCw, HardDrive, Eye, EyeOff, Award
 } from 'lucide-react';
 
 import { useToast } from '../context/ToastContext';
@@ -12,6 +12,7 @@ import { fetchAdminApi } from '../api';
 import { ProductImage } from '../components/ProductImage';
 import { AdminLoginForm } from '../components/AdminLoginForm';
 import { ImageCropModal } from '../components/admin/ImageCropModal';
+import { ModalCloseButton } from '../components/admin/ModalCloseButton';
 import { GoogleDrivePickerButton } from '../components/GoogleDrivePickerButton';
 import { AdminCoupons } from '../components/admin/AdminCoupons';
 import { AdminCustomers } from '../components/admin/AdminCustomers';
@@ -149,6 +150,7 @@ export function Admin() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dataError, setDataError] = useState(null);
 
@@ -207,6 +209,13 @@ export function Admin() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryDesc, setNewCategoryDesc] = useState('');
   const [creatingCategory, setCreatingCategory] = useState(false);
+
+  // Brand Creation Modal State
+  const [showBrandModal, setShowBrandModal] = useState(false);
+  const [newBrandName, setNewBrandName] = useState('');
+  const [newBrandDesc, setNewBrandDesc] = useState('');
+  const [newBrandCategory, setNewBrandCategory] = useState('');
+  const [creatingBrand, setCreatingBrand] = useState(false);
 
   // Change Admin Credentials Modal State
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
@@ -587,23 +596,88 @@ export function Admin() {
     }
   };
 
+  const handleCreateBrand = async (e) => {
+    e.preventDefault();
+    if (!newBrandName.trim()) {
+      addToast('Brand name is required', 'error');
+      return;
+    }
+    const targetCategory = newBrandCategory || productForm.category || categories[0]?._id || '';
+    if (!targetCategory) {
+      addToast('Select a category for this brand first', 'error');
+      return;
+    }
+
+    try {
+      setCreatingBrand(true);
+      const res = await fetchAdminApi('/admin/brands', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newBrandName.trim(),
+          category: targetCategory,
+          description: newBrandDesc.trim(),
+        }),
+      });
+
+      if (res.success && res.data) {
+        addToast(`Brand '${res.data.name}' ready!`, 'success');
+
+        const brandRes = await fetchAdminApi('/admin/brands');
+        if (brandRes && brandRes.success) setBrands(brandRes.data);
+
+        // Auto select the newly created brand in the product form — and its
+        // category too, in case the brand modal was opened before one was chosen.
+        setProductForm((prev) => ({
+          ...prev,
+          category: targetCategory,
+          brand: res.data.name,
+        }));
+
+        setNewBrandName('');
+        setNewBrandDesc('');
+        setNewBrandCategory('');
+        setShowBrandModal(false);
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to create brand', 'error');
+    } finally {
+      setCreatingBrand(false);
+    }
+  };
+
+  const handleDeleteBrand = async (id, name) => {
+    if (!window.confirm(`Delete brand '${name}'? Products already using this brand name are not affected.`)) return;
+    try {
+      const res = await fetchAdminApi(`/admin/brands/${id}`, { method: 'DELETE' });
+      if (res.success) {
+        addToast(`Brand '${name}' deleted`, 'info');
+        const brandRes = await fetchAdminApi('/admin/brands');
+        if (brandRes && brandRes.success) setBrands(brandRes.data);
+      }
+    } catch (err) {
+      addToast(err.message || 'Failed to delete brand', 'error');
+    }
+  };
+
 
 
   const loadAdminData = async () => {
     setLoading(true);
     setDataError(null);
     try {
-      const [statsRes, prodRes, orderRes, catRes] = await Promise.all([
+      const [statsRes, prodRes, orderRes, catRes, brandRes] = await Promise.all([
         fetchAdminApi('/admin/stats'),
         fetchAdminApi('/admin/products'),
         fetchAdminApi('/admin/orders'),
         fetchAdminApi('/admin/categories'),
+        fetchAdminApi('/admin/brands'),
       ]);
 
       if (statsRes && statsRes.success) setStats(statsRes.data);
       if (prodRes && prodRes.success) setProducts(prodRes.data);
       if (orderRes && orderRes.success) setOrders(orderRes.data);
       if (catRes && catRes.success) setCategories(catRes.data);
+      if (brandRes && brandRes.success) setBrands(brandRes.data);
     } catch (err) {
       console.error('Admin data fetch error:', err);
       setDataError(err.message || 'Failed to fetch admin dashboard data');
@@ -1220,6 +1294,17 @@ export function Admin() {
           </button>
 
           <button
+            onClick={() => {
+              setNewBrandCategory(productForm.category || categories[0]?._id || '');
+              setShowBrandModal(true);
+            }}
+            className="px-4 py-2.5 rounded-full bg-slate-800 text-white font-bold text-xs hover:bg-slate-700 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+          >
+            <Award className="w-4 h-4 text-sky-400" />
+            <span>Manage Brands ({brands.length})</span>
+          </button>
+
+          <button
             onClick={() => setShowCredentialsModal(true)}
             className="px-4 py-2.5 rounded-full bg-slate-800 text-white font-bold text-xs hover:bg-slate-700 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
             title="Change Admin Username & Password"
@@ -1696,7 +1781,7 @@ export function Admin() {
       {/* PRODUCT EDIT / CREATE MODAL */}
       {showProductModal && (
         <div className="fixed inset-0 z-50 bg-wagh-dark/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-3xl p-6 space-y-6 border border-wagh-border shadow-2xl">
+          <div className="bg-white max-w-3xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl p-6 space-y-6 border border-wagh-border shadow-2xl">
             
             {/* Modal Header & Tabs */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
@@ -1707,46 +1792,52 @@ export function Admin() {
                 <p className="text-xs text-slate-500 font-sans">Manage product specifications, media assets, and structured details</p>
               </div>
 
-              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold font-sans">
-                <button
-                  type="button"
-                  onClick={() => setModalTab('basic')}
-                  className={`px-3.5 py-1.5 rounded-xl transition-all ${
-                    modalTab === 'basic' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Basic Info
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('images')}
-                  className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
-                    modalTab === 'images' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span>Images ({productForm.images?.length || 0})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('variants')}
-                  className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
-                    modalTab === 'variants' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Variants ({productForm.variants?.length || 0})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('sections')}
-                  className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
-                    modalTab === 'sections' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Sections ({productForm.sections?.length || 0})</span>
-                </button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold font-sans">
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('basic')}
+                    className={`px-3.5 py-1.5 rounded-xl transition-all ${
+                      modalTab === 'basic' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Basic Info
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('images')}
+                    className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                      modalTab === 'images' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Images ({productForm.images?.length || 0})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('variants')}
+                    className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                      modalTab === 'variants' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Variants ({productForm.variants?.length || 0})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('sections')}
+                    className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                      modalTab === 'sections' ? 'bg-white text-wagh-teal shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Sections ({productForm.sections?.length || 0})</span>
+                  </button>
+                </div>
+                <ModalCloseButton
+                  onClick={() => setShowProductModal(false)}
+                  label={editingProductId ? 'Close edit product form' : 'Close create product form'}
+                />
               </div>
             </div>
 
@@ -1780,7 +1871,7 @@ export function Admin() {
                       <select
                         required
                         value={productForm.category || categories[0]?._id || ''}
-                        onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                        onChange={(e) => setProductForm({ ...productForm, category: e.target.value, brand: '' })}
                         className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-wagh-teal font-sans text-xs bg-white"
                       >
                         {categories.length === 0 ? (
@@ -1795,13 +1886,43 @@ export function Admin() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-700 mb-1 font-semibold">Brand</label>
-                      <input
-                        type="text"
-                        value={productForm.brand}
-                        onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-wagh-teal"
-                      />
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-slate-700 font-semibold">Brand</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewBrandCategory(productForm.category || categories[0]?._id || '');
+                            setShowBrandModal(true);
+                          }}
+                          className="text-[11px] font-bold text-wagh-teal hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" /> Add Brand
+                        </button>
+                      </div>
+                      {(() => {
+                        const activeCategoryId = productForm.category || categories[0]?._id || '';
+                        const brandsInCategory = brands.filter((b) => (b.category?._id || b.category) === activeCategoryId);
+                        // A product saved before brand management existed (or one whose
+                        // brand was since deleted from Manage Brands) can carry a brand
+                        // string that isn't in the managed list — keep it selectable
+                        // instead of silently discarding it.
+                        const currentIsKnown = !productForm.brand || brandsInCategory.some((b) => b.name === productForm.brand);
+                        return (
+                          <select
+                            value={productForm.brand}
+                            onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
+                            className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-wagh-teal font-sans text-xs bg-white"
+                          >
+                            <option value="">— Select a brand —</option>
+                            {!currentIsKnown && (
+                              <option value={productForm.brand}>{productForm.brand} (current)</option>
+                            )}
+                            {brandsInCategory.map((b) => (
+                              <option key={b._id} value={b.name}>{b.name}</option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -2689,21 +2810,16 @@ export function Admin() {
 
       {/* CATEGORY CREATION & MANAGEMENT MODAL */}
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in font-sans">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-sans">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl">
+            <div className="sticky top-0 z-10 bg-white flex justify-between items-center px-5 sm:px-6 py-4 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Tag className="w-5 h-5 text-amber-500" />
+                <Tag className="w-5 h-5 text-amber-500 shrink-0" />
                 <span>Create & Manage Categories</span>
               </h3>
-              <button
-                type="button"
-                onClick={() => setShowCategoryModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer text-sm font-bold"
-              >
-                ✕
-              </button>
+              <ModalCloseButton onClick={() => setShowCategoryModal(false)} label="Close category manager" />
             </div>
+            <div className="p-5 sm:p-6 space-y-5">
 
             {/* New Category Form */}
             <form onSubmit={handleCreateCategory} className="space-y-3">
@@ -2748,17 +2864,17 @@ export function Admin() {
               {categories.length === 0 ? (
                 <p className="text-xs text-slate-400">No categories created yet.</p>
               ) : (
-                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                <div className="space-y-1.5">
                   {categories.map((cat) => (
-                    <div key={cat._id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                      <div>
-                        <span className="font-bold text-slate-800">{cat.name}</span>
-                        {cat.description && <span className="text-[10px] text-slate-400 block">{cat.description}</span>}
+                    <div key={cat._id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-800 break-words">{cat.name}</span>
+                        {cat.description && <span className="text-[10px] text-slate-400 block break-words">{cat.description}</span>}
                       </div>
                       <button
                         type="button"
                         onClick={() => handleDeleteCategory(cat._id, cat.name)}
-                        className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition-colors cursor-pointer"
+                        className="shrink-0 text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition-colors cursor-pointer"
                         title="Delete category"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -2768,6 +2884,115 @@ export function Admin() {
                 </div>
               )}
             </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BRAND MANAGEMENT MODAL — category-scoped, mirrors "Manage Categories" */}
+      {showBrandModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-sans">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl">
+            <div className="sticky top-0 z-10 bg-white flex justify-between items-center px-5 sm:px-6 py-4 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Award className="w-5 h-5 text-sky-500 shrink-0" />
+                <span>Create & Manage Brands</span>
+              </h3>
+              <ModalCloseButton onClick={() => setShowBrandModal(false)} label="Close brand manager" />
+            </div>
+            <div className="p-5 sm:p-6 space-y-5">
+
+            {/* New Brand Form */}
+            <form onSubmit={handleCreateBrand} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Category *</label>
+                <select
+                  required
+                  value={newBrandCategory || categories[0]?._id || ''}
+                  onChange={(e) => setNewBrandCategory(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-wagh-teal focus:outline-none bg-white"
+                >
+                  {categories.length === 0 ? (
+                    <option value="">Default / General</option>
+                  ) : (
+                    categories.map((cat) => (
+                      <option key={cat._id} value={cat._id}>{cat.name}</option>
+                    ))
+                  )}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">e.g. under "Cables": Hunter, Fire, GRIPP</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Brand Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Hunter, Fire, GRIPP..."
+                  value={newBrandName}
+                  onChange={(e) => setNewBrandName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-wagh-teal focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Description (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Heavy-duty braided cable line"
+                  value={newBrandDesc}
+                  onChange={(e) => setNewBrandDesc(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-wagh-teal focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={creatingBrand}
+                className="w-full py-2.5 bg-wagh-teal hover:bg-wagh-teal-dark text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{creatingBrand ? 'Creating Brand...' : 'Save & Select Brand'}</span>
+              </button>
+            </form>
+
+            {/* Existing Brands List, grouped by category */}
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Existing Brands ({brands.length})
+              </h4>
+              {brands.length === 0 ? (
+                <p className="text-xs text-slate-400">No brands created yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {categories
+                    .map((cat) => ({ cat, brandsInCat: brands.filter((b) => (b.category?._id || b.category) === cat._id) }))
+                    .filter(({ brandsInCat }) => brandsInCat.length > 0)
+                    .map(({ cat, brandsInCat }) => (
+                      <div key={cat._id} className="space-y-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{cat.name}</span>
+                        {brandsInCat.map((b) => (
+                          <div key={b._id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-800 break-words">{b.name}</span>
+                              {b.description && <span className="text-[10px] text-slate-400 block break-words">{b.description}</span>}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteBrand(b._id, b.name)}
+                              className="shrink-0 text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition-colors cursor-pointer"
+                              title="Delete brand"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+            </div>
           </div>
         </div>
       )}
@@ -2775,7 +3000,7 @@ export function Admin() {
       {/* PRODUCT DETAILS VIEW MODAL (TASK 1) */}
       {selectedViewProduct && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-6">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl space-y-6">
             
             {/* Modal Header */}
             <div className="flex justify-between items-start pb-4 border-b border-slate-100">
@@ -2785,12 +3010,7 @@ export function Admin() {
                 </span>
                 <h2 className="text-xl font-bold text-slate-900 mt-1">{selectedViewProduct.name}</h2>
               </div>
-              <button
-                onClick={() => setSelectedViewProduct(null)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
-              >
-                ✕
-              </button>
+              <ModalCloseButton onClick={() => setSelectedViewProduct(null)} label="Close product details" />
             </div>
 
             {/* Gallery & Key Info */}
@@ -2881,7 +3101,7 @@ export function Admin() {
       {/* ORDER DETAILS POPUP MODAL (TASK 3) */}
       {selectedOrderModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-6">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl space-y-6">
             
             {/* Modal Header */}
             <div className="flex justify-between items-start pb-4 border-b border-slate-100">
@@ -2895,12 +3115,7 @@ export function Admin() {
                 <p className="text-xs text-slate-500 mt-0.5">Full Customer Order Details & Payment Metadata</p>
               </div>
 
-              <button
-                onClick={() => setSelectedOrderModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl bg-slate-100 transition-colors text-sm font-bold cursor-pointer"
-              >
-                ✕
-              </button>
+              <ModalCloseButton onClick={() => setSelectedOrderModal(null)} label="Close order details" />
             </div>
 
             {/* Top Meta Pill Box */}
@@ -3037,7 +3252,7 @@ export function Admin() {
                   <p className="text-xs text-slate-500 font-mono-tag">Update username and/or password</p>
                 </div>
               </div>
-              <button
+              <ModalCloseButton
                 onClick={() => {
                   setShowCredentialsModal(false);
                   setCurrentAdminPassword('');
@@ -3045,10 +3260,8 @@ export function Admin() {
                   setNewAdminPassword('');
                   setConfirmAdminPassword('');
                 }}
-                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+                label="Close change credentials dialog"
+              />
             </div>
 
             <form onSubmit={handleUpdateCredentials} className="space-y-4">

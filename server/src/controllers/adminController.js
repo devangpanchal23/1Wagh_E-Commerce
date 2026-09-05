@@ -5,6 +5,7 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const Category = require('../models/Category');
+const Brand = require('../models/Brand');
 const AdminConfig = require('../models/AdminConfig');
 const { resolveCategoryId } = require('../utils/categoryResolver');
 const { resolveParentId, getDescendantIds } = require('../utils/parentResolver');
@@ -620,6 +621,95 @@ exports.deleteAdminCategory = async (req, res, next) => {
     res.json({
       success: true,
       message: 'Category deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get admin brands (optionally scoped to one category)
+// @route   GET /api/v1/admin/brands
+exports.getAdminBrands = async (req, res, next) => {
+  try {
+    const filter = {};
+    if (req.query.category && req.query.category.match(/^[0-9a-fA-F]{24}$/)) {
+      filter.category = req.query.category;
+    }
+
+    const brands = await Brand.find(filter)
+      .populate('category', 'name slug')
+      .sort({ name: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: brands,
+      message: 'Brands fetched successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Create admin brand
+// @route   POST /api/v1/admin/brands
+exports.createAdminBrand = async (req, res, next) => {
+  try {
+    const { name, category, description } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Brand name is required' });
+    }
+    if (!category || !category.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: 'A valid category is required' });
+    }
+
+    const categoryExists = await Category.findById(category).select('_id').lean();
+    if (!categoryExists) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    const nameTrimmed = name.trim();
+    const slug = nameTrimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+
+    const existing = await Brand.findOne({ category, $or: [{ name: nameTrimmed }, { slug }] });
+    if (existing) {
+      const populated = await existing.populate('category', 'name slug');
+      return res.status(200).json({
+        success: true,
+        data: populated,
+        message: 'Brand already exists in this category',
+      });
+    }
+
+    const brand = await Brand.create({
+      name: nameTrimmed,
+      slug,
+      category,
+      description: description || '',
+    });
+    await brand.populate('category', 'name slug');
+
+    cache.invalidate('brands:');
+
+    res.status(201).json({
+      success: true,
+      data: brand,
+      message: 'Brand created successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete admin brand
+// @route   DELETE /api/v1/admin/brands/:id
+exports.deleteAdminBrand = async (req, res, next) => {
+  try {
+    await Brand.findByIdAndDelete(req.params.id);
+    cache.invalidate('brands:');
+    res.json({
+      success: true,
+      message: 'Brand deleted successfully',
     });
   } catch (error) {
     next(error);

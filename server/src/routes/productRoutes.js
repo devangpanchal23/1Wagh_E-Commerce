@@ -15,4 +15,3 @@ router.get('/collections/featured', getHomeCollections);
 router.get('/:id', getProductById);
 
 module.exports = router;
-

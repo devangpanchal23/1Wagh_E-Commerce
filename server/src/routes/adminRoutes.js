@@ -20,6 +20,9 @@ const {
   getAdminCategories,
   createAdminCategory,
   deleteAdminCategory,
+  getAdminBrands,
+  createAdminBrand,
+  deleteAdminBrand,
   getAdminUsers,
   exportAdminUsers,
 } = require('../controllers/adminController');
@@ -92,6 +95,10 @@ router.delete('/products/:id', deleteAdminProduct);
 router.get('/categories', getAdminCategories);
 router.post('/categories', createAdminCategory);
 router.delete('/categories/:id', deleteAdminCategory);
+
+router.get('/brands', getAdminBrands);
+router.post('/brands', createAdminBrand);
+router.delete('/brands/:id', deleteAdminBrand);
 
 router.get('/users', getAdminUsers);
 // Returns a binary .xlsx attachment rather than JSON

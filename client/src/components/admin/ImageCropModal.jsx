@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
-import { ZoomIn, RotateCw, Check, X, Crop as CropIcon } from 'lucide-react';
+import { ZoomIn, RotateCw, Check, Crop as CropIcon } from 'lucide-react';
+import { ModalCloseButton } from './ModalCloseButton';
 
 // Helper function to create an HTML Image object
 const createImage = (url) =>
@@ -92,12 +93,7 @@ export function ImageCropModal({ imageSrc, onCancel, onCropComplete }) {
             <CropIcon className="w-5 h-5 text-wagh-teal" />
             <span>Crop & Adjust Product Image</span>
           </div>
-          <button
-            onClick={onCancel}
-            className="p-1.5 rounded-full hover:bg-slate-200/80 text-slate-500 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <ModalCloseButton onClick={onCancel} label="Close crop dialog" />
         </div>
 
         {/* Cropper Container */}
