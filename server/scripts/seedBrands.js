@@ -71,17 +71,19 @@ async function run() {
     const { brand: fireBrand, created } = await upsertBrand('Fire', cablesCategory._id);
     console.log(created ? 'Created brand: Fire -> Cables' : 'Brand already exists: Fire -> Cables');
 
-    const productName = 'WAGH® Fire 3.1A Fast Charging Cable - USB to Type-C';
-    const slug = slugify(productName);
-    const existingProduct = await Product.findOne({ slug });
+    const productName = 'WAGH® Fire 3.1A Fast Charging Cable - USB to Type-C, 100% Copper, 1M, High Speed';
+    const slug = 'wagh-fire-3-1a-fast-charging-cable-usb-to-type-c';
+    const existingProduct = await Product.findOne({
+      $or: [{ slug }, { name: /Fire 3\.1A/i }]
+    });
     if (existingProduct) {
       console.log('Skipped (already exists): ' + productName);
     } else {
       const images = copyImages(slug, [
-        'Cables/Fire series/Type Usb to C/Fire - U to C 1 - Wagh M..webp',
-        'Cables/Fire series/Type Usb to C/Fire - U to C 2 - Wagh M..webp',
-        'Cables/Fire series/Type Usb to C/Fire - U to C 3 - Wagh M..webp',
-        'Cables/Fire series/Type Usb to C/Fire - U to C 4 - Wagh M..webp',
+        'Cables/Fire series/Type Usb to C/Fire - U to C 1 - Wagh M.webp',
+        'Cables/Fire series/Type Usb to C/Fire Type USB to C 2. - Wagh M.webp',
+        'Cables/Fire series/Type Usb to C/Fire - U to C 3 - Wagh M.webp',
+        'Cables/Fire series/Type Usb to C/Fire Type USB to C 4 - Wagh M.webp',
       ]);
 
       await Product.create({
