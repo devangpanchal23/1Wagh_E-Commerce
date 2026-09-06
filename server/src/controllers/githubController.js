@@ -3,6 +3,18 @@ const githubService = require('../services/githubService');
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = /\.(jpg|jpeg|png|webp|svg)$/i;
 
+function githubErrorResponse(res, error, fallback) {
+  const githubStatus = error.status ?? 0;
+  const githubMessage = error.githubMessage || error.message || fallback;
+  return res.status(502).json({
+    error: true,
+    code: 'GITHUB_AUTH_ERROR',
+    message: githubMessage,
+    githubStatus,
+    githubMessage,
+  });
+}
+
 // @desc    List images already stored in this product's GitHub folder
 // @route   GET /api/v1/admin/github/images/:productId
 exports.listCloudImages = async (req, res, next) => {
@@ -14,7 +26,7 @@ exports.listCloudImages = async (req, res, next) => {
     const images = await githubService.listFolderImages(req.params.productId);
     return res.json({ error: false, images, message: 'Cloud images retrieved successfully' });
   } catch (error) {
-    return res.status(502).json({ error: true, message: error.message || 'Failed to load cloud images', images: [] });
+    return githubErrorResponse(res, error, 'Failed to load cloud images');
   }
 };
 
@@ -35,7 +47,11 @@ exports.uploadCloudImage = async (req, res, next) => {
     }
 
     if (!githubService.isConfigured()) {
-      return res.status(503).json({ error: true, message: 'GitHub cloud storage is not configured on this server.' });
+      return res.status(503).json({
+        error: true,
+        code: 'GITHUB_AUTH_ERROR',
+        message: `GitHub cloud storage is not configured; missing ${githubService.missingConfiguration().join(', ')}.`,
+      });
     }
 
     const uploaded = await githubService.uploadImage({
@@ -50,6 +66,6 @@ exports.uploadCloudImage = async (req, res, next) => {
       message: 'Image uploaded to cloud storage successfully',
     });
   } catch (error) {
-    return res.status(502).json({ error: true, message: error.message || 'Cloud upload failed' });
+    return githubErrorResponse(res, error, 'Cloud upload failed');
   }
 };

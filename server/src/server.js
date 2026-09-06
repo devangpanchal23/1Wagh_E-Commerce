@@ -35,6 +35,8 @@ const extraRoutes = require('./routes/extraRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const receiptRoutes = require('./routes/receiptRoutes');
 const errorHandler = require('./middleware/errorHandler');
+const githubService = require('./services/githubService');
+const { ensureUploadsDirectoryWritable } = require('./services/uploadStorageService');
 
 const app = express();
 
@@ -139,6 +141,22 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5050;
 
+async function validateUploadStorageAtStartup() {
+  if (!process.env.VERCEL) {
+    const uploadDir = ensureUploadsDirectoryWritable();
+    console.log(`[upload-storage] Local upload directory is writable: ${uploadDir}`);
+  }
+
+  try {
+    await githubService.validateConfiguration();
+  } catch (error) {
+    console.error(`[github] GITHUB_AUTH_ERROR during startup validation: status=${error.status ?? 0} message=${error.githubMessage || error.message}`);
+    // Cloud image uploads are a production dependency. Refuse to advertise a
+    // healthy server when its configured token cannot write to the image repo.
+    if (process.env.NODE_ENV === 'production') throw error;
+  }
+}
+
 // Kick off the connection immediately so the pool is warm before the first
 // request arrives; `ensureDBConnection` awaits this same cached promise.
 connectDB().catch((err) => {
@@ -149,9 +167,21 @@ connectDB().catch((err) => {
 // On Vercel the platform owns the listener, so only bind a port when running standalone.
 let server;
 if (!process.env.VERCEL) {
-  server = app.listen(PORT, () => {
-    console.log(`🚀 WAGH Server listening on port ${PORT}`);
-  });
+  validateUploadStorageAtStartup()
+    .then(() => {
+      server = app.listen(PORT, () => {
+        console.log(`🚀 WAGH Server listening on port ${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error(`❌ Startup aborted: ${error.message}`);
+      process.exit(1);
+    });
+} else {
+  // Vercel has no durable local disk. Start the cloud preflight immediately;
+  // a failed validation is logged with the original GitHub status/message and
+  // every upload request returns GITHUB_AUTH_ERROR rather than a generic 403.
+  validateUploadStorageAtStartup().catch(() => {});
 }
 
 const gracefulShutdown = (signal) => {

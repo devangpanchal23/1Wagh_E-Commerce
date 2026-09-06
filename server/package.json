@@ -10,7 +10,8 @@
     "seed": "node seed.js",
     "sync-indexes": "node scripts/syncIndexes.js",
     "migrate-db": "node scripts/migrate-mongodb.js",
-    "normalize-order-identifiers": "node scripts/normalizeOrderIdentifiers.js"
+    "normalize-order-identifiers": "node scripts/normalizeOrderIdentifiers.js",
+    "test:uploads": "node --test test/uploadInfrastructure.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

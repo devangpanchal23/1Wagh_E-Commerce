@@ -922,19 +922,15 @@ export function Admin() {
     setShowCropModal(false);
     setUploadingImage(true);
     try {
-      const token = localStorage.getItem('wagh_admin_token') || sessionStorage.getItem('wagh_admin_token');
       const productKey = editingProductId || 'unassigned';
 
       if (uploadDestination === 'cloud') {
         const formData = new FormData();
         formData.append('image', croppedFile);
-
-        const response = await fetch(`/api/v1/admin/github/upload/${productKey}`, {
+        const res = await fetchAdminApi(`/admin/github/upload/${productKey}`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
           body: formData,
         });
-        const res = await response.json();
 
         if (res && !res.error) {
           addToast('Image uploaded to cloud successfully!', 'success');
@@ -965,15 +961,10 @@ export function Admin() {
       formData.append('image', croppedFile);
       formData.append('productId', productKey);
 
-      const response = await fetch('/api/v1/admin/upload', {
+      const res = await fetchAdminApi('/admin/upload', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
       });
-
-      const res = await response.json();
       if (res && res.success) {
         addToast('Image uploaded successfully!', 'success');
         const newImgObj = {
@@ -997,7 +988,7 @@ export function Admin() {
         addToast(msg, 'error');
       }
     } catch (err) {
-      const msg = 'Upload failed. Please check your connection and try again.';
+      const msg = err.message || 'Upload failed. Please check your connection and try again.';
       setImageError(msg);
       addToast(msg, 'error');
     } finally {

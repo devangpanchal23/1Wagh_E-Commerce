@@ -29,6 +29,7 @@ const {
 const { uploadProductImage, getMediaGallery } = require('../controllers/mediaController');
 const couponController = require('../controllers/couponController');
 const { verifyAdminToken } = require('../middleware/adminAuth');
+const { UPLOADS_DIR, ensureUploadsDirectoryWritable } = require('../services/uploadStorageService');
 
 // Vercel (and other serverless-Lambda-based) deployments ship a read-only
 // filesystem — only /tmp is writable, and it's wiped between invocations, so
@@ -45,7 +46,11 @@ const storage = IS_SERVERLESS
   ? multer.memoryStorage()
   : multer.diskStorage({
       destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, '../../public/uploads'));
+        try {
+          cb(null, ensureUploadsDirectoryWritable());
+        } catch (error) {
+          cb(error);
+        }
       },
       filename: function (req, file, cb) {
         const ext = path.extname(file.originalname).toLowerCase();

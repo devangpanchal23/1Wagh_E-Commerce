@@ -8,6 +8,18 @@ const crypto = require('crypto');
 const GITHUB_API_BASE = 'https://api.github.com';
 const IMAGE_ROOT = 'product-photos';
 
+class GitHubApiError extends Error {
+  constructor({ status, message, operation, cause }) {
+    super(message);
+    this.name = 'GitHubApiError';
+    this.code = 'GITHUB_AUTH_ERROR';
+    this.status = status;
+    this.githubMessage = message;
+    this.operation = operation;
+    this.cause = cause;
+  }
+}
+
 function getConfig() {
   const token = process.env.GITHUB_TOKEN;
   const owner = process.env.GITHUB_OWNER;
@@ -22,6 +34,15 @@ function getConfig() {
 function isConfigured() {
   const { token, owner, repo } = getConfig();
   return Boolean(token && owner && repo);
+}
+
+function missingConfiguration() {
+  const { token, owner, repo } = getConfig();
+  return [
+    !token && 'GITHUB_TOKEN',
+    !owner && 'GITHUB_OWNER',
+    !repo && 'GITHUB_REPO',
+  ].filter(Boolean);
 }
 
 function authHeaders() {
@@ -57,11 +78,67 @@ function toUniqueFilename(originalName) {
 }
 
 async function githubRequest(path, options = {}) {
-  const res = await fetch(`${GITHUB_API_BASE}${path}`, {
-    ...options,
-    headers: { ...authHeaders(), ...(options.headers || {}) },
-  });
-  return res;
+  try {
+    return await fetch(`${GITHUB_API_BASE}${path}`, {
+      ...options,
+      headers: { ...authHeaders(), ...(options.headers || {}) },
+    });
+  } catch (error) {
+    const operation = options.operation || `${options.method || 'GET'} ${path}`;
+    console.error(`[github] ${operation} failed before GitHub responded: ${error.code || error.name}: ${error.message}`);
+    throw new GitHubApiError({
+      status: 0,
+      message: `GitHub network error: ${error.message}`,
+      operation,
+      cause: error,
+    });
+  }
+}
+
+async function throwGitHubApiError(res, operation) {
+  const body = await res.json().catch(() => ({}));
+  const message = body.message || `GitHub API error (${res.status})`;
+  // Preserve GitHub's precise status/message. These fields are essential for
+  // spotting an expired token, missing Contents: write grant, SSO, or a branch
+  // protection restriction; never replace them with a generic permission error.
+  console.error(`[github] ${operation} failed: status=${res.status} message=${message}`);
+  throw new GitHubApiError({ status: res.status, message, operation });
+}
+
+// Runs once at boot (and is also callable by deployment health checks). GET
+// /repos exposes the authenticated token's effective `permissions.push` flag,
+// so a fine-grained token that is read-only or scoped to the wrong repository
+// fails before the first image upload.
+async function validateConfiguration() {
+  const missing = missingConfiguration();
+  if (missing.length) {
+    throw new GitHubApiError({
+      status: 0,
+      message: `GitHub image storage is not configured; missing ${missing.join(', ')}.`,
+      operation: 'startup configuration validation',
+    });
+  }
+
+  const { owner, repo, branch } = getConfig();
+  const repoOperation = `GET /repos/${owner}/${repo}`;
+  const repoResponse = await githubRequest(`/repos/${owner}/${repo}`, { operation: repoOperation });
+  if (!repoResponse.ok) await throwGitHubApiError(repoResponse, repoOperation);
+  const repository = await repoResponse.json();
+  if (repository.permissions?.push !== true) {
+    const message = 'Token can read the repository but does not have direct write permission. For a fine-grained PAT, grant this repository Contents: Read and write; for a classic PAT, grant repo scope and authorize SSO for the organization.';
+    console.error(`[github] ${repoOperation} failed: status=200 message=${message}`);
+    throw new GitHubApiError({ status: 200, message, operation: repoOperation });
+  }
+
+  const branchOperation = `GET /repos/${owner}/${repo}/git/ref/heads/${branch}`;
+  const branchResponse = await githubRequest(
+    `/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`,
+    { operation: branchOperation }
+  );
+  if (!branchResponse.ok) await throwGitHubApiError(branchResponse, branchOperation);
+
+  console.log(`[github] Image storage preflight passed for ${owner}/${repo}@${branch} (repository read + direct-write permission).`);
+  return { owner, repo, branch };
 }
 
 // Lists the images already stored for a product. A missing folder (product
@@ -75,8 +152,7 @@ async function listFolderImages(productId) {
 
   if (res.status === 404) return [];
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `GitHub API error (${res.status})`);
+    await throwGitHubApiError(res, `GET /repos/${getConfig().owner}/${getConfig().repo}/contents/${folderPath}`);
   }
 
   const entries = await res.json();
@@ -98,7 +174,11 @@ async function listFolderImages(productId) {
 // jsDelivr (or a browser) has already cached under an old path.
 async function uploadImage({ productId, originalName, buffer }) {
   if (!isConfigured()) {
-    throw new Error('GitHub integration is not configured on this server.');
+    throw new GitHubApiError({
+      status: 0,
+      message: `GitHub image storage is not configured; missing ${missingConfiguration().join(', ')}.`,
+      operation: 'upload configuration validation',
+    });
   }
 
   const { owner, repo, branch } = getConfig();
@@ -111,14 +191,17 @@ async function uploadImage({ productId, originalName, buffer }) {
   // file's `sha` to overwrite it, so check first and pass it along if a file
   // somehow already exists at this exact path.
   let existingSha;
-  const existingRes = await githubRequest(`/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`);
+  const existingOperation = `GET /repos/${owner}/${repo}/contents/${filePath}`;
+  const existingRes = await githubRequest(`/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`, { operation: existingOperation });
   if (existingRes.ok) {
     const existing = await existingRes.json();
     existingSha = existing.sha;
   }
 
+  const putOperation = `PUT /repos/${owner}/${repo}/contents/${filePath}`;
   const putRes = await githubRequest(`/repos/${owner}/${repo}/contents/${filePath}`, {
     method: 'PUT',
+    operation: putOperation,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       message: `Add product image ${filename} (product ${productId || 'unassigned'})`,
@@ -129,8 +212,7 @@ async function uploadImage({ productId, originalName, buffer }) {
   });
 
   if (!putRes.ok) {
-    const body = await putRes.json().catch(() => ({}));
-    throw new Error(body.message || `GitHub upload failed (${putRes.status})`);
+    await throwGitHubApiError(putRes, putOperation);
   }
 
   const result = await putRes.json();
@@ -144,8 +226,11 @@ async function uploadImage({ productId, originalName, buffer }) {
 
 module.exports = {
   isConfigured,
+  missingConfiguration,
+  validateConfiguration,
   listFolderImages,
   uploadImage,
   toJsDelivrUrl,
   productFolderPath,
+  GitHubApiError,
 };

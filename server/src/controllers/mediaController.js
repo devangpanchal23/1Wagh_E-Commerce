@@ -2,15 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const githubService = require('../services/githubService');
 const MediaAsset = require('../models/MediaAsset');
+const { UPLOADS_DIR } = require('../services/uploadStorageService');
 
-const UPLOADS_DIR = path.join(__dirname, '../../public/uploads');
-
-// Ensure upload directory exists. Skipped entirely on a read-only deployment
-// filesystem (Vercel) — the directory is already committed there with its
-// existing contents, and mkdir would throw EROFS for no benefit.
-if (!process.env.VERCEL && !fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
 
 // Fires the GitHub sync in the background after a local upload has already
 // been written to disk and responded to the client. Deliberately not
@@ -56,7 +49,8 @@ exports.uploadProductImage = async (req, res, next) => {
       if (!githubService.isConfigured()) {
         return res.status(503).json({
           success: false,
-          message: 'Image uploads are not available: this server has no writable local storage and GitHub-backed cloud storage is not configured (set GITHUB_TOKEN/GITHUB_OWNER/GITHUB_REPO).',
+          code: 'GITHUB_AUTH_ERROR',
+          message: `Image uploads are not available: this server has no writable local storage and GitHub-backed cloud storage is not configured (missing ${githubService.missingConfiguration().join(', ')}).`,
         });
       }
 

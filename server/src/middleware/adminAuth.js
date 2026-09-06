@@ -9,8 +9,10 @@ const verifyAdminToken = (req, res, next) => {
   }
 
   if (!token) {
+    console.warn('[admin-auth] ADMIN_AUTH_ERROR: missing Bearer token');
     return res.status(401).json({
       success: false,
+      code: 'ADMIN_AUTH_ERROR',
       message: 'Admin authorization token required',
     });
   }
@@ -20,8 +22,10 @@ const verifyAdminToken = (req, res, next) => {
     const decoded = jwt.verify(token, adminSecret);
 
     if (decoded.role !== 'admin' || decoded.type !== 'admin_session') {
+      console.warn('[admin-auth] ADMIN_AUTH_ERROR: token claims do not permit image writes');
       return res.status(401).json({
         success: false,
+        code: 'ADMIN_AUTH_ERROR',
         message: 'Invalid admin token claims',
       });
     }
@@ -29,8 +33,10 @@ const verifyAdminToken = (req, res, next) => {
     req.admin = decoded;
     next();
   } catch (err) {
+    console.warn(`[admin-auth] ADMIN_AUTH_ERROR: ${err.name}: ${err.message}`);
     return res.status(401).json({
       success: false,
+      code: 'ADMIN_AUTH_ERROR',
       message: 'Invalid or expired admin session token',
     });
   }

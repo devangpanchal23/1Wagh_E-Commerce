@@ -2,6 +2,29 @@ const errorHandler = (err, req, res, next) => {
   let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
   let message = err.message || 'Internal Server Error';
 
+  if (err.code === 'GITHUB_AUTH_ERROR') {
+    console.error(`[github] GITHUB_AUTH_ERROR: status=${err.status ?? 0} message=${err.githubMessage || err.message}`);
+    return res.status(502).json({
+      success: false,
+      data: null,
+      code: 'GITHUB_AUTH_ERROR',
+      message: err.githubMessage || err.message,
+      githubStatus: err.status ?? 0,
+      githubMessage: err.githubMessage || err.message,
+    });
+  }
+
+  if (err.code === 'LOCAL_STORAGE_PERMISSION_ERROR' || ['EACCES', 'EPERM', 'EROFS'].includes(err.code)) {
+    console.error(`[upload-storage] LOCAL_STORAGE_PERMISSION_ERROR: Node ${err.nodeCode || err.code}: ${err.message}`);
+    return res.status(503).json({
+      success: false,
+      data: null,
+      code: 'LOCAL_STORAGE_PERMISSION_ERROR',
+      message: 'Local upload storage is not writable. Check the deployment user, directory ownership, and volume mount permissions.',
+      nodeCode: err.nodeCode || err.code,
+    });
+  }
+
   if (err.name === 'CastError') {
     statusCode = 404;
     message = 'Resource not found';

@@ -129,8 +129,9 @@ export async function fetchAdminApi(endpoint, options = {}) {
   const adminToken =
     localStorage.getItem('wagh_admin_token') || sessionStorage.getItem('wagh_admin_token');
 
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
     ...options.headers,
   };
@@ -147,7 +148,10 @@ export async function fetchAdminApi(endpoint, options = {}) {
         localStorage.removeItem('wagh_admin_token');
         sessionStorage.removeItem('wagh_admin_token');
       }
-      throw new Error(data.message || 'Admin request failed');
+      const error = new Error(data.message || 'Admin request failed');
+      error.code = data.code;
+      error.status = res.status;
+      throw error;
     }
 
     const method = (options.method || 'GET').toUpperCase();
