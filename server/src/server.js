@@ -30,6 +30,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const googleDriveRoutes = require('./routes/googleDriveRoutes');
+const githubRoutes = require('./routes/githubRoutes');
 const extraRoutes = require('./routes/extraRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const receiptRoutes = require('./routes/receiptRoutes');
@@ -105,6 +106,7 @@ app.use('/api/', ensureDBConnection);
 
 // API Routes (versioned /api/v1)
 app.use('/api/v1/admin/google-drive', googleDriveRoutes);
+app.use('/api/v1/admin/github', githubRoutes);
 app.use('/api/v1/admin', adminRoutes);
 
 app.use('/api/v1/auth', authRoutes);

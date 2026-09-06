@@ -164,7 +164,7 @@ export function Admin() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
   const [modalTab, setModalTab] = useState('basic'); // 'basic' | 'images' | 'sections'
-  const [imageSourceTab, setImageSourceTab] = useState('upload'); // 'upload' | 'gallery'
+  const [imageSourceTab, setImageSourceTab] = useState('upload'); // 'upload' | 'gallery' | 'github'
 
   // Image Upload, Gallery & Crop State
   const [galleryImages, setGalleryImages] = useState([]);
@@ -173,6 +173,13 @@ export function Admin() {
   const [showCropModal, setShowCropModal] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const [reCropIndex, setReCropIndex] = useState(null);
+  const [imageError, setImageError] = useState('');
+  const [uploadDestination, setUploadDestination] = useState('local'); // 'local' | 'cloud' — which button opened the file picker
+
+  // "Choose from Cloud" (GitHub-backed) gallery state
+  const [cloudImages, setCloudImages] = useState([]);
+  const [loadingCloud, setLoadingCloud] = useState(false);
+  const [cloudError, setCloudError] = useState('');
 
   const [productForm, setProductForm] = useState({
     name: '',
@@ -834,20 +841,52 @@ export function Admin() {
     }
   };
 
+  // "Choose from Cloud" — lists images already pushed to the product's GitHub
+  // folder. An empty folder is a normal, expected state (new product, or one
+  // that has never had a cloud upload) and is rendered as an empty state
+  // below, not an error.
+  const fetchCloudImages = async () => {
+    setLoadingCloud(true);
+    setCloudError('');
+    try {
+      const productKey = editingProductId || 'unassigned';
+      const res = await fetchAdminApi(`/admin/github/images/${productKey}`);
+      if (res && !res.error) {
+        setCloudImages(res.images || []);
+      } else {
+        setCloudError(res?.message || 'Failed to load cloud images.');
+        setCloudImages([]);
+      }
+    } catch (err) {
+      setCloudError(err.message || 'Failed to load cloud images.');
+      setCloudImages([]);
+    } finally {
+      setLoadingCloud(false);
+    }
+  };
+
   const processImageFile = (file) => {
     if (!file) return;
 
-    if (productForm.images?.length >= 4) {
-      addToast('Maximum 4 images allowed per product.', 'error');
+    setImageError('');
+
+    if ((productForm.images?.length || 0) >= 4) {
+      const msg = 'Maximum 4 images allowed per product.';
+      setImageError(msg);
+      addToast(msg, 'error');
       return;
     }
 
     if (!/\.(jpg|jpeg|png|webp|svg)$/i.test(file.name) && !file.type?.startsWith('image/')) {
-      addToast('Invalid file format. Please upload JPG, PNG, WEBP, or SVG images.', 'error');
+      const msg = 'Invalid file format. Please upload JPG, PNG, WEBP, or SVG images.';
+      setImageError(msg);
+      addToast(msg, 'error');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      addToast('File too large. Maximum size is 5MB.', 'error');
+      const msg = 'File too large. Maximum size is 5MB.';
+      setImageError(msg);
+      addToast(msg, 'error');
       return;
     }
 
@@ -858,20 +897,74 @@ export function Admin() {
   };
 
   const handleSelectLocalFile = (e) => {
+    setUploadDestination('local');
     const file = e.target.files?.[0];
     if (file) {
       processImageFile(file);
     }
+    // Reset the input's value so selecting the exact same file again still
+    // fires onChange — browsers only fire `change` on a value transition, so
+    // without this, clearing all images and re-picking the same filename a
+    // second time in a row silently does nothing.
+    e.target.value = '';
+  };
+
+  const handleSelectCloudUploadFile = (e) => {
+    setUploadDestination('cloud');
+    const file = e.target.files?.[0];
+    if (file) {
+      processImageFile(file);
+    }
+    e.target.value = '';
   };
 
   const handleCropComplete = async (croppedFile) => {
     setShowCropModal(false);
     setUploadingImage(true);
     try {
+      const token = localStorage.getItem('wagh_admin_token') || sessionStorage.getItem('wagh_admin_token');
+      const productKey = editingProductId || 'unassigned';
+
+      if (uploadDestination === 'cloud') {
+        const formData = new FormData();
+        formData.append('image', croppedFile);
+
+        const response = await fetch(`/api/v1/admin/github/upload/${productKey}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        const res = await response.json();
+
+        if (res && !res.error) {
+          addToast('Image uploaded to cloud successfully!', 'success');
+          const uploaded = res.images?.[0];
+          const newImgObj = {
+            url: uploaded?.url,
+            publicId: uploaded?.sha || uploaded?.path,
+            filename: uploaded?.name,
+            isPrimary: productForm.images.length === 0,
+          };
+
+          if (reCropIndex !== null) {
+            const updated = [...productForm.images];
+            updated[reCropIndex] = newImgObj;
+            setProductForm((prev) => ({ ...prev, images: updated }));
+          } else {
+            setProductForm((prev) => ({ ...prev, images: [...prev.images, newImgObj] }));
+          }
+        } else {
+          const msg = res?.message || 'Cloud upload failed';
+          setImageError(msg);
+          addToast(msg, 'error');
+        }
+        return;
+      }
+
       const formData = new FormData();
       formData.append('image', croppedFile);
+      formData.append('productId', productKey);
 
-      const token = localStorage.getItem('wagh_admin_token') || sessionStorage.getItem('wagh_admin_token');
       const response = await fetch('/api/v1/admin/upload', {
         method: 'POST',
         headers: {
@@ -899,13 +992,18 @@ export function Admin() {
         }
         await fetchMediaGallery();
       } else {
-        addToast(res.message || 'Upload failed', 'error');
+        const msg = res?.message || 'Upload failed';
+        setImageError(msg);
+        addToast(msg, 'error');
       }
     } catch (err) {
-      addToast('Upload failed', 'error');
+      const msg = 'Upload failed. Please check your connection and try again.';
+      setImageError(msg);
+      addToast(msg, 'error');
     } finally {
       setUploadingImage(false);
       setReCropIndex(null);
+      setUploadDestination('local');
     }
   };
 
@@ -933,6 +1031,31 @@ export function Admin() {
     addToast('Added image from Cloud gallery', 'success');
   };
 
+  // "Choose from Cloud" pick — attaches a GitHub-hosted image directly, no
+  // re-upload needed since the file already lives in the product's folder.
+  const handleSelectCloudImage = (cloudItem) => {
+    if ((productForm.images?.length || 0) >= 4) {
+      addToast('Maximum 4 images allowed per product.', 'error');
+      return;
+    }
+
+    const exists = productForm.images.some(
+      (img) => (typeof img === 'string' ? img === cloudItem.url : img.url === cloudItem.url)
+    );
+    if (exists) {
+      addToast('Image already added', 'info');
+      return;
+    }
+
+    const newImgObj = {
+      url: cloudItem.url,
+      publicId: cloudItem.sha || cloudItem.path,
+      filename: cloudItem.name,
+      isPrimary: productForm.images.length === 0,
+    };
+    setProductForm((prev) => ({ ...prev, images: [...prev.images, newImgObj] }));
+    addToast('Attached image from Cloud', 'success');
+  };
 
   const handleSetPrimaryImage = (idx) => {
     const updated = productForm.images.map((img, i) => {
@@ -948,8 +1071,9 @@ export function Admin() {
   };
 
   const handleRemoveImage = (idx) => {
-    const updated = productForm.images.filter((_, i) => i !== idx);
+    const updated = (Array.isArray(productForm.images) ? productForm.images : []).filter((_, i) => i !== idx);
     setProductForm((prev) => ({ ...prev, images: updated }));
+    setImageError('');
   };
 
   const handleReCropExisting = (imgItem, idx) => {
@@ -1193,6 +1317,9 @@ export function Admin() {
     setEditingProductId(null);
     setModalTab('basic');
     setImageSourceTab('upload');
+    setImageError('');
+    setCloudImages([]);
+    setCloudError('');
 
     const parentProduct = presetParentId ? products.find((p) => p._id === presetParentId) : null;
 
@@ -1234,6 +1361,9 @@ export function Admin() {
     setEditingProductId(p._id);
     setModalTab('basic');
     setImageSourceTab('upload');
+    setImageError('');
+    setCloudImages([]);
+    setCloudError('');
     setProductForm({
       name: p.name,
       description: p.description,
@@ -2105,11 +2235,28 @@ export function Admin() {
                             imageSourceTab === 'gallery' ? 'bg-wagh-teal text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
-                          Choose from Cloud Gallery
+                          Local Gallery
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImageSourceTab('github');
+                            fetchCloudImages();
+                          }}
+                          className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                            imageSourceTab === 'github' ? 'bg-wagh-teal text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          Choose from Cloud
                         </button>
                       </div>
                     </div>
 
+                    {imageError && (
+                      <div className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                        {imageError}
+                      </div>
+                    )}
 
                     {/* Path 2: Local Upload & Crop Trigger */}
                     {imageSourceTab === 'upload' && (
@@ -2120,10 +2267,16 @@ export function Admin() {
                           <p className="font-bold text-slate-800 text-sm">Drag & drop product image here, or browse file</p>
                           <p className="text-[11px] text-slate-400">Supports JPG, PNG, WEBP up to 5MB. Includes in-browser crop editor.</p>
                         </div>
-                        <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-wagh-teal text-white font-bold text-xs cursor-pointer shadow-xs hover:bg-wagh-teal-dark transition-colors">
-                          <span>Select Local File</span>
-                          <input type="file" accept="image/*" onChange={handleSelectLocalFile} className="hidden" />
-                        </label>
+                        <div className="flex items-center justify-center gap-2 flex-wrap">
+                          <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-wagh-teal text-white font-bold text-xs cursor-pointer shadow-xs hover:bg-wagh-teal-dark transition-colors">
+                            <span>Select Local File</span>
+                            <input type="file" accept="image/*" onChange={handleSelectLocalFile} className="hidden" />
+                          </label>
+                          <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-xs hover:bg-slate-900 transition-colors">
+                            <span>Upload to Cloud</span>
+                            <input type="file" accept="image/*" onChange={handleSelectCloudUploadFile} className="hidden" />
+                          </label>
+                        </div>
                       </div>
                     )}
 
@@ -2154,6 +2307,47 @@ export function Admin() {
                                 className="group relative aspect-square rounded-xl bg-white border border-slate-200 overflow-hidden cursor-pointer hover:border-wagh-teal hover:shadow-md transition-all p-1"
                               >
                                 <ProductImage src={media.url} alt={media.filename} className="w-full h-full" />
+                                <div className="absolute inset-0 bg-wagh-teal/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
+                                  + Select
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Path 3: Choose from GitHub-backed Cloud Gallery (jsDelivr-served) */}
+                    {imageSourceTab === 'github' && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                          <span>Images already in Cloud Storage for this product ({cloudImages.length}):</span>
+                          <button
+                            type="button"
+                            onClick={fetchCloudImages}
+                            className="text-wagh-teal flex items-center gap-1 hover:underline text-[11px]"
+                          >
+                            <RefreshCw className="w-3 h-3" /> Refresh
+                          </button>
+                        </div>
+
+                        {loadingCloud ? (
+                          <div className="py-8 text-center text-slate-400 text-xs">Loading cloud images...</div>
+                        ) : cloudError ? (
+                          <div className="py-8 text-center text-rose-500 text-xs">{cloudError}</div>
+                        ) : cloudImages.length === 0 ? (
+                          <div className="py-8 text-center text-slate-400 text-xs">
+                            No cloud images yet for this product. Use "Upload to Cloud" above to add one.
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5 max-h-48 overflow-y-auto p-1 custom-gallery-scrollbar pr-2">
+                            {cloudImages.map((cloudItem) => (
+                              <div
+                                key={cloudItem.sha || cloudItem.path}
+                                onClick={() => handleSelectCloudImage(cloudItem)}
+                                className="group relative aspect-square rounded-xl bg-white border border-slate-200 overflow-hidden cursor-pointer hover:border-wagh-teal hover:shadow-md transition-all p-1"
+                              >
+                                <ProductImage src={cloudItem.url} alt={cloudItem.name} className="w-full h-full" />
                                 <div className="absolute inset-0 bg-wagh-teal/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
                                   + Select
                                 </div>
