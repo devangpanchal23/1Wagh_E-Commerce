@@ -30,17 +30,29 @@ const { uploadProductImage, getMediaGallery } = require('../controllers/mediaCon
 const couponController = require('../controllers/couponController');
 const { verifyAdminToken } = require('../middleware/adminAuth');
 
-// Multer Storage setup for local product image uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../../public/uploads'));
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const uniqueName = `wagh_${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`;
-    cb(null, uniqueName);
-  },
-});
+// Vercel (and other serverless-Lambda-based) deployments ship a read-only
+// filesystem — only /tmp is writable, and it's wiped between invocations, so
+// anything written there is gone before it could ever be served back out.
+// diskStorage's `EROFS: read-only file system` there isn't a bug to patch
+// around; local disk simply isn't durable storage in that environment. Use
+// memoryStorage instead so the controller gets a Buffer it can push straight
+// to GitHub-backed cloud storage, and keep the disk-backed path (with its
+// local gallery + background GitHub sync) for local/dev servers where the
+// filesystem is real and persistent.
+const IS_SERVERLESS = !!process.env.VERCEL;
+
+const storage = IS_SERVERLESS
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, '../../public/uploads'));
+      },
+      filename: function (req, file, cb) {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const uniqueName = `wagh_${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`;
+        cb(null, uniqueName);
+      },
+    });
 
 const fileFilter = (req, file, cb) => {
   const allowed = /\.(jpg|jpeg|png|webp|svg)$/i;

@@ -5,8 +5,10 @@ const MediaAsset = require('../models/MediaAsset');
 
 const UPLOADS_DIR = path.join(__dirname, '../../public/uploads');
 
-// Ensure upload directory exists
-if (!fs.existsSync(UPLOADS_DIR)) {
+// Ensure upload directory exists. Skipped entirely on a read-only deployment
+// filesystem (Vercel) — the directory is already committed there with its
+// existing contents, and mkdir would throw EROFS for no benefit.
+if (!process.env.VERCEL && !fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
@@ -42,6 +44,59 @@ exports.uploadProductImage = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please select an image file to upload.' });
     }
 
+    const productId = (req.body && req.body.productId) || 'unassigned';
+
+    // multer gave us a Buffer, not a disk path — this route is running on a
+    // read-only deployment filesystem (Vercel), where there is nowhere
+    // durable to write locally. GitHub-backed cloud storage is the only
+    // place that can actually persist the file here, so upload it there
+    // directly (synchronously — there's no local copy to fall back to) and
+    // hand back its jsDelivr URL as the canonical image URL.
+    if (req.file.buffer) {
+      if (!githubService.isConfigured()) {
+        return res.status(503).json({
+          success: false,
+          message: 'Image uploads are not available: this server has no writable local storage and GitHub-backed cloud storage is not configured (set GITHUB_TOKEN/GITHUB_OWNER/GITHUB_REPO).',
+        });
+      }
+
+      const uploaded = await githubService.uploadImage({
+        productId,
+        originalName: req.file.originalname,
+        buffer: req.file.buffer,
+      });
+
+      try {
+        await MediaAsset.create({
+          filename: uploaded.name,
+          localUrl: uploaded.url,
+          githubUrl: uploaded.url,
+          githubPath: uploaded.path,
+          productId,
+          syncStatus: 'synced',
+        });
+      } catch (persistError) {
+        console.error('[media] Failed to persist MediaAsset record:', persistError.message);
+      }
+
+      return res.status(201).json({
+        success: true,
+        data: {
+          url: uploaded.url,
+          publicId: uploaded.sha || uploaded.path,
+          filename: uploaded.name,
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mimetype: req.file.mimetype,
+        },
+        message: 'Product image uploaded successfully',
+      });
+    }
+
+    // Local/dev server with a real, persistent filesystem — write to disk as
+    // before, sync to GitHub in the background, and keep the local URL as
+    // the immediate (and permanent, if GitHub is unreachable) fallback.
+    //
     // Store a relative path, not an absolute host:port URL — the admin panel
     // and storefront may run on a different host/port (or a different domain
     // entirely once deployed) than whatever this upload request happened to
@@ -49,7 +104,6 @@ exports.uploadProductImage = async (req, res, next) => {
     // origin at render time, so the same record works in every environment.
     const fileUrl = `/uploads/${req.file.filename}`;
     const publicId = `local_${Date.now()}_${req.file.filename}`;
-    const productId = (req.body && req.body.productId) || 'unassigned';
 
     try {
       await MediaAsset.create({ filename: req.file.filename, localUrl: fileUrl, productId });
@@ -84,17 +138,21 @@ exports.uploadProductImage = async (req, res, next) => {
 // @route   GET /api/v1/admin/media
 exports.getMediaGallery = async (req, res, next) => {
   try {
-    if (!fs.existsSync(UPLOADS_DIR)) {
-      return res.json({ success: true, data: [] });
-    }
+    const files = fs.existsSync(UPLOADS_DIR) ? fs.readdirSync(UPLOADS_DIR) : [];
+    const filesOnDisk = new Set(files);
 
-    const files = fs.readdirSync(UPLOADS_DIR);
-
-    // Look up sync state for these files in one query so a synced image can
-    // be served from its faster, edge-cached jsDelivr URL instead of local
-    // disk, while files uploaded before this tracking existed (no matching
-    // MediaAsset row) fall back to their local URL exactly as before.
-    const assets = await MediaAsset.find({ filename: { $in: files } }).lean();
+    // One query covers both cases below: files that are on disk (to prefer
+    // their synced jsDelivr URL over the local one) and files that only
+    // exist as a MediaAsset row pointing at GitHub — which, on a read-only
+    // deployment filesystem, is every upload (see uploadProductImage). Without
+    // the latter, those images would upload fine but then vanish from this
+    // gallery the moment the modal closed, since they never touched disk.
+    const assets = await MediaAsset.find({
+      $or: [{ filename: { $in: files } }, { githubUrl: { $ne: null } }],
+    })
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
     const assetByFilename = new Map(assets.map((asset) => [asset.filename, asset]));
 
     const mediaList = files
@@ -110,12 +168,23 @@ exports.getMediaGallery = async (req, res, next) => {
           size: stats.size,
           createdAt: stats.birthtime,
         };
-      })
-      .sort((a, b) => b.createdAt - a.createdAt);
+      });
+
+    const cloudOnlyAssets = assets
+      .filter((asset) => !filesOnDisk.has(asset.filename))
+      .map((asset) => ({
+        url: asset.githubUrl,
+        publicId: `local_${asset.filename}`,
+        filename: asset.filename,
+        size: null,
+        createdAt: asset.createdAt,
+      }));
+
+    const combined = [...mediaList, ...cloudOnlyAssets].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.json({
       success: true,
-      data: mediaList,
+      data: combined,
       message: 'Media gallery retrieved successfully',
     });
   } catch (error) {
