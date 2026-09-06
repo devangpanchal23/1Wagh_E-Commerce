@@ -75,7 +75,7 @@ export function Footer() {
               </div>
               <div className="flex items-start gap-3">
                 <MapPin className="w-4 h-4 text-wagh-teal shrink-0 mt-0.5" />
-                <span>Silver Point, Moti Nagar, Nana Varachha, Surat &ndash; Kamrej Hwy, Surat, Gujarat 395013</span>
+                <span>20-A, Daheri Faliyu, Opposite Jalaram Bungalows, Near Ideal Pre-School, Nana Varachha, Surat, Gujarat &ndash; 395010</span>
               </div>
             </div>
           </div>

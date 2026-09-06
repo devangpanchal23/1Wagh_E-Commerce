@@ -103,7 +103,7 @@ export function Contact() {
                   <div>
                     <span className="text-xs font-mono-tag text-wagh-muted uppercase block">Headquarters & Store</span>
                     <span className="font-bold text-xs sm:text-sm text-wagh-dark leading-snug block">
-                      6VGR+92G, Surat &ndash; Kamrej Hwy, Silver Point, Moti Nagar, Nana Varachha, Surat, Gujarat 395013
+                      20-A, Daheri Faliyu, Opposite Jalaram Bungalows, Near Ideal Pre-School, Nana Varachha, Surat, Gujarat &ndash; 395010
                     </span>
                   </div>
 

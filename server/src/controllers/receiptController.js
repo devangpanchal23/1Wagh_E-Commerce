@@ -6,7 +6,7 @@ const COMPANY_DETAILS = {
   gstin: process.env.COMPANY_GSTIN || '27AAACW1234A1Z5',
   email: process.env.COMPANY_EMAIL || 'support@waghmobile.com',
   phone: process.env.COMPANY_PHONE || '+91 98765 43210',
-  address: process.env.COMPANY_ADDRESS || 'Wagh Mobile Accessories, Main Market, Mumbai, MH - 400001',
+  address: process.env.COMPANY_ADDRESS || 'Wagh Mobile Accessories, 20-A, Daheri Faliyu, Opposite Jalaram Bungalows, Near Ideal Pre-School, Nana Varachha, Surat, Gujarat - 395010',
 };
 
 // Helper to generate sequential-style receipt number

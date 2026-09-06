@@ -19,7 +19,7 @@ export function OfficialInvoiceDocument({ data, mode = 'invoice' }) {
     customer = {},
     company = {
       name: 'Wagh Mobile Accessories',
-      address: 'Wagh Mobile Accessories, 6VGR+92G, Surat - Kamrej Hwy, Silver Point, Moti Nagar, Nana Varachha, Surat, Gujarat - 395013',
+      address: 'Wagh Mobile Accessories, 20-A, Daheri Faliyu, Opposite Jalaram Bungalows, Near Ideal Pre-School, Nana Varachha, Surat, Gujarat - 395010',
       gstin: '27AAACW1234A1Z5',
       email: 'waghonline9@gmail.com',
     },
