@@ -20,7 +20,7 @@
     },
     {
       "src": "/assets/(.*)",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "headers": { "cache-control": "public, max-age=86400, stale-while-revalidate=604800" },
       "continue": true
     },
     {

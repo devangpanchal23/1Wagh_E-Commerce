@@ -103,7 +103,7 @@ export function Home() {
               {/* Responsive Hero Banner Image Container */}
               <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-200/80 shadow-md group">
                 <img
-                  src="/assets/branding/wagh-100w-launch-banner.png"
+                  src="/assets/branding/wagh-100w-launch-banner.png?v=2"
                   alt="WAGH 100W Fast Charger New Launch Banner"
                   className="w-full h-full object-cover sm:object-contain group-hover:scale-105 transition-transform duration-500 rounded-2xl"
                   width="800"
