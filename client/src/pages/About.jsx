@@ -6,7 +6,7 @@ import { TrustStrip } from '../components/TrustStrip';
 export function About() {
   return (
     <div className="space-y-16 pb-16">
-      
+
       {/* HERO SECTION */}
       <section className="bg-wagh-teal text-white py-20 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden">
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
@@ -28,7 +28,7 @@ export function About() {
       {/* BRAND STORY */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
+
           <div className="lg:col-span-6 space-y-6">
             <span className="font-mono-tag text-xs font-bold uppercase tracking-wider text-wagh-teal bg-wagh-teal/10 px-3 py-1 rounded-full">
               Our Journey
@@ -60,7 +60,7 @@ export function About() {
                 <div>
                   <h4 className="font-bold text-wagh-dark text-base">Unmatched Charging Speed</h4>
                   <p className="text-xs text-wagh-muted leading-relaxed">
-                    Full PPS protocol support delivering true 45W and 65W charging output.
+                    Advanced PPS support for fast, efficient 45 W and 65 W charging.
                   </p>
                 </div>
               </div>
@@ -72,7 +72,7 @@ export function About() {
                 <div>
                   <h4 className="font-bold text-wagh-dark text-base">Zero-Failure Safety</h4>
                   <p className="text-xs text-wagh-muted leading-relaxed">
-                    10-layer safety protective circuit preventing overvoltage, short circuits, and thermal spikes.
+                    Advanced safety protection.
                   </p>
                 </div>
               </div>
