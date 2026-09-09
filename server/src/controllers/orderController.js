@@ -437,10 +437,18 @@ exports.createRazorpayOrder = async (req, res, next) => {
       data: razorpayOrder,
     });
   } catch (error) {
-    console.error('Razorpay Create Order Error:', error);
-    res.status(500).json({
+    const razorpayDescription = error?.error?.description;
+    const statusCode = error?.statusCode;
+    console.error('Razorpay Create Order Error:', {
+      statusCode,
+      description: razorpayDescription,
+      raw: error,
+    });
+
+    const isAuthError = statusCode === 401 || error?.error?.code === 'BAD_REQUEST_ERROR' && /key/i.test(razorpayDescription || '');
+    res.status(isAuthError ? 401 : 500).json({
       success: false,
-      message: error.message || 'Razorpay order creation failed',
+      message: razorpayDescription || error.message || 'Razorpay order creation failed',
     });
   }
 };
@@ -511,7 +519,7 @@ exports.verifyRazorpayPayment = async (req, res, next) => {
     console.error('Razorpay Verification Error:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Razorpay payment verification failed',
+      message: error?.error?.description || error.message || 'Razorpay payment verification failed',
     });
   }
 };
