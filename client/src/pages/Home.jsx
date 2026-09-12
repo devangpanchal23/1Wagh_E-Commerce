@@ -12,6 +12,11 @@ export function Home() {
   const [collections, setCollections] = useState({ bestSellers: [], newArrivals: [], featured: [] });
   const [loading, setLoading] = useState(true);
 
+  // The "WAGH ALL IN 1 2.0" banner should deep-link to its own product page,
+  // so we look it up by name across the loaded collections instead of hardcoding an id.
+  const allInOneProduct = [...collections.featured, ...collections.bestSellers, ...collections.newArrivals]
+    .find((product) => /all[\s-]*in[\s-]*1|all[\s-]*in[\s-]*one/i.test(product.name || ''));
+
   useEffect(() => {
     const loadHomeData = async () => {
       try {
@@ -252,7 +257,7 @@ export function Home() {
 
             <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
               <Link
-                to="/shop?category=chargers-adapters"
+                to={allInOneProduct ? `/product/${allInOneProduct._id}` : '/shop?category=chargers-adapters'}
                 className="px-6 py-3 rounded-full bg-wagh-teal text-white font-extrabold text-xs sm:text-sm hover:bg-wagh-teal-dark transition-all duration-300 shadow-md hover:shadow-teal-glow hover:scale-105 flex items-center justify-center gap-2 group cursor-pointer"
               >
                 <span>Shop ALL IN 1 2.0 Now</span>
@@ -266,14 +271,17 @@ export function Home() {
           </div>
 
           <div className="lg:col-span-6 p-6 sm:p-10 flex items-center justify-center relative z-10">
-            <div className="relative group w-full max-w-lg aspect-square flex items-center justify-center bg-white/60 backdrop-blur-sm rounded-3xl p-4 border border-wagh-teal/20 shadow-lg">
+            <Link
+              to={allInOneProduct ? `/product/${allInOneProduct._id}` : '/shop?category=chargers-adapters'}
+              className="relative group w-full max-w-lg aspect-square flex items-center justify-center bg-white/60 backdrop-blur-sm rounded-3xl p-4 border border-wagh-teal/20 shadow-lg"
+            >
               <div className="absolute -inset-2 bg-gradient-to-r from-wagh-teal/20 to-wagh-gold/20 rounded-3xl opacity-30 blur-xl group-hover:opacity-50 transition-opacity" />
               <img
                 src="/assets/branding/wagh-all-in-one-packaging-banner.jpg"
                 alt="WAGH ALL IN 1 2.0 66W 100W Flash Charger Box Packaging"
                 className="w-full h-full object-contain rounded-2xl shadow-md group-hover:scale-105 transition-transform duration-500 relative z-10"
               />
-            </div>
+            </Link>
           </div>
 
         </div>

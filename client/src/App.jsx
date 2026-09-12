@@ -17,6 +17,7 @@ const ProductDetail = React.lazy(() => import('./pages/ProductDetail').then((mod
 const Cart = React.lazy(() => import('./pages/Cart').then((module) => ({ default: module.Cart })));
 const Checkout = React.lazy(() => import('./pages/Checkout').then((module) => ({ default: module.Checkout })));
 const About = React.lazy(() => import('./pages/About').then((module) => ({ default: module.About })));
+const PolicyPage = React.lazy(() => import('./pages/PolicyPage').then((module) => ({ default: module.PolicyPage })));
 const Contact = React.lazy(() => import('./pages/Contact').then((module) => ({ default: module.Contact })));
 const Profile = React.lazy(() => import('./pages/Profile').then((module) => ({ default: module.Profile })));
 const Admin = React.lazy(() => import('./pages/Admin').then((module) => ({ default: module.Admin })));
@@ -104,6 +105,9 @@ function MainAppLayout() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy-policy" element={<PolicyPage />} />
+          <Route path="/terms-of-service" element={<PolicyPage />} />
+          <Route path="/shipping-policy" element={<PolicyPage />} />
           <Route
             path="/profile"
             element={

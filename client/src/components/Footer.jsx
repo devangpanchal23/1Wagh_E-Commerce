@@ -7,21 +7,21 @@ export function Footer() {
     <footer className="bg-wagh-dark text-white pt-16 pb-8 border-t border-gray-800 print:hidden no-print">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-gray-800">
-          
+
           {/* Column 1: Brand Blurb */}
           <div className="space-y-4">
             <Link to="/" className="inline-block py-1">
-              <img 
-                src="/assets/branding/wagh-logo-2x.png" 
-                alt="WAGH Mobile Accessories" 
-                className="h-9 w-auto object-contain brightness-0 invert" 
+              <img
+                src="/assets/branding/wagh-logo-2x.png"
+                alt="WAGH Mobile Accessories"
+                className="h-9 w-auto object-contain brightness-0 invert"
               />
             </Link>
             <p className="text-gray-400 text-sm leading-relaxed">
               Power that feels premium. Speed you can trust. Engineered for high-speed charging, long-lasting endurance, and uncompromising device protection.
             </p>
             <div className="flex items-center gap-3 pt-2">
-              <a href="https://instagram.com" target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center text-gray-300 hover:text-wagh-gold hover:bg-gray-700 transition-colors" aria-label="Instagram">
+              <a href="https://www.instagram.com/waghmobileaccessories/" target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center text-gray-300 hover:text-wagh-gold hover:bg-gray-700 transition-colors" aria-label="Instagram">
                 <Instagram className="w-4 h-4" />
               </a>
               <a href="https://facebook.com" target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center text-gray-300 hover:text-wagh-gold hover:bg-gray-700 transition-colors" aria-label="Facebook">
@@ -40,7 +40,7 @@ export function Footer() {
               <li><Link to="/shop?category=chargers-adapters" className="hover:text-wagh-gold transition-colors">45W Super Fast Chargers</Link></li>
               <li><Link to="/shop?category=power-banks" className="hover:text-wagh-gold transition-colors">20,000mAh Power Banks</Link></li>
               <li><Link to="/shop?category=cables-connectors" className="hover:text-wagh-gold transition-colors">100W Braided Type-C Cables</Link></li>
-              <li><Link to="/shop?category=audio-wireless" className="hover:text-wagh-gold transition-colors">ANC Wireless TWS Earbuds</Link></li>
+              <li><Link to="/shop?category=audio-wireless" className="hover:text-wagh-gold transition-colors">ENC Wireless TWS Earbuds</Link></li>
               <li><Link to="/shop" className="hover:text-wagh-gold transition-colors">All Mobile Accessories</Link></li>
             </ul>
           </div>
@@ -84,12 +84,12 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-400 font-mono-tag">
           <p>© {new Date().getFullYear()} WAGH Mobile Accessories. All rights reserved.</p>
-          
+
           <div className="flex items-center gap-6">
-            <Link to="/about" className="hover:text-wagh-gold transition-colors">Privacy Policy</Link>
-            <Link to="/about" className="hover:text-wagh-gold transition-colors">Terms of Service</Link>
-            <Link to="/about" className="hover:text-wagh-gold transition-colors">Shipping Policy</Link>
-            
+            <Link to="/privacy-policy" className="hover:text-wagh-gold transition-colors">Privacy Policy</Link>
+            <Link to="/terms-of-service" className="hover:text-wagh-gold transition-colors">Terms of Service</Link>
+            <Link to="/shipping-policy" className="hover:text-wagh-gold transition-colors">Shipping Policy</Link>
+
             {/* Admin Dashboard Access Link */}
             <Link
               to="/admin"

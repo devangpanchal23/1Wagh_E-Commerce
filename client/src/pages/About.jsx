@@ -77,7 +77,7 @@ export function About() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-4">
+              <div id="warranty" className="flex items-start gap-4 scroll-mt-28">
                 <div className="w-10 h-10 rounded-xl bg-wagh-teal text-wagh-gold flex items-center justify-center font-bold shrink-0 mt-1">
                   <Award className="w-5 h-5" />
                 </div>
@@ -91,6 +91,26 @@ export function About() {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* SHIPPING & RETURNS */}
+      <section id="shipping" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-28">
+        <div className="bg-white p-8 rounded-3xl border border-wagh-border shadow-soft grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-2 flex lg:justify-center">
+            <div className="w-14 h-14 rounded-2xl bg-wagh-teal text-wagh-gold flex items-center justify-center shrink-0">
+              <Truck className="w-7 h-7" />
+            </div>
+          </div>
+          <div className="lg:col-span-10 space-y-3">
+            <h3 className="font-editorial text-2xl font-bold text-wagh-dark">Shipping &amp; Returns</h3>
+            <p className="text-sm text-wagh-muted leading-relaxed">
+              Every order is dispatched within 24-48 hours and delivered via trusted courier partners with free express delivery across India. Once shipped, you'll receive real-time tracking details by SMS and email.
+            </p>
+            <p className="text-sm text-wagh-muted leading-relaxed">
+              Not satisfied? Products can be returned within 7 days of delivery in their original, unused condition for a replacement or refund. Damaged or defective items are replaced free of cost — just reach out to our support team with your order ID.
+            </p>
+          </div>
         </div>
       </section>
 
